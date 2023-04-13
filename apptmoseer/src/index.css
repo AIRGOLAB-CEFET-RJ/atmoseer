@@ -1,0 +1,273 @@
+body {
+    padding: 0;
+    margin: 0;
+    color: black;
+    font-family: sans-serif;
+    overflow-x: hidden;
+    background-color: white;
+}
+
+/* Menu */
+
+.header {
+    background-color: #17d2ff;
+    height: 5rem;
+}
+
+.header h1 {
+    display: flex;
+    align-items: center;
+    color: white;
+    height: 5rem;
+    margin: 0 0 0 1rem; 
+    font-size: 2.25rem;
+}
+
+.header a {
+    text-decoration: none;
+}
+
+.checkbox-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.checkbox {
+    height: 5rem;
+    width: 100px;
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 9999;
+    transition: 400ms ease-in-out 0s;
+}
+
+.checkbox .trace {
+    width: 50px;
+    height: 2px;
+    background-color: white;
+    position: absolute;
+    border-radius: 4px;
+    transition: 0.5s ease-in-out;
+}
+
+.checkbox .trace:nth-child(1){
+    top: 20px;
+    transform: rotate(0);
+}
+
+.checkbox .trace:nth-child(2){
+    top: 40px;
+    transform: rotate(0);
+}
+
+.checkbox .trace:nth-child(3){
+    top: 60px;
+    transform: rotate(0);
+}
+
+#toggle {
+    display: none;
+}
+
+.menu {
+    position: absolute;
+    top: 28px;
+    right: 30px;
+    background: transparent;
+    height: 40px;
+    width: 40px;
+    border-radius: 50%;
+    box-shadow: 0px 0px 0px 0px #17d2ff;
+    z-index: -1;
+    transition: 400ms ease-in-out 0s;
+}
+
+.menu-items {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: -1;
+    opacity: 0;
+    visibility: hidden;
+    transition: 400ms ease-in-out 0s;
+}
+
+.menu-items ul {
+    list-style-type: none;
+}
+
+.menu-items ul li a {
+    margin: 10px 0;
+    color: white;
+    text-decoration: none;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    font-size: 2rem;
+}
+
+#toggle:checked + .checkbox .trace:nth-child(1) {
+    transform: rotate(45deg);
+    background-color: white;
+    top: 47px;
+}
+
+#toggle:checked + .checkbox .trace:nth-child(2) {
+    transform: translateX(-100px);
+    width: 30px;
+    visibility: hidden;
+    opacity: 0;
+}
+
+#toggle:checked + .checkbox .trace:nth-child(3) {
+    transform: rotate(-45deg);
+    background-color: white;
+    top: 48px;
+}
+
+#toggle:checked + .checkbox {
+    background-color: #17d2ff;
+}
+
+#toggle:checked ~ .menu {
+    box-shadow: 0px 0px 0px 100vmax #17d2ff;
+    z-index: 1;
+}
+
+#toggle:checked ~ .menu-items {
+    visibility: visible;
+    opacity: 1;
+    z-index: 2;
+}
+
+/* Main */
+
+main {
+    margin: auto;
+    width: 65%;
+    height: calc(100vmax - 8rem);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+}
+
+main button {
+    font-size: 1.25rem;
+    border-radius: 5px;
+    border-style: none;
+    padding: 0.8rem;
+}
+
+#ativarLocalizacao {
+    background-color: #17d2ff;
+    color: white;
+}
+
+#maisTarde {
+    background-color: white;
+}
+
+.localidade-wrapper {
+    width: 100%;
+    color: white;
+    overflow-y: scroll;
+}
+
+.localidade {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    padding: 1rem;
+    background-color: #17d2ff;
+    border-radius: 5%;
+    text-align: center;
+    color: white;
+    margin-bottom: 1rem;
+}
+
+.localidade a, .localidade a:visited {
+    text-decoration: none;
+    color: white;
+}
+
+.localidade-conteudo {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.localidade-conteudo img {
+    margin-right: 5px;
+}
+
+.localidade-dados p {
+    margin: 0.5em 0 0.5em 0;
+}
+
+#adicionarLocalidade {
+    display: flex;
+    flex-direction: column;
+}
+
+#estado {
+    margin-bottom: 1rem;
+    padding: 0.5rem;
+    background-color: whitesmoke;
+}
+
+#cidade {
+    margin-bottom: 2.5rem;
+    padding: 0.5rem;
+}
+
+#buscarLocalidade {
+    font-size: 1.25rem;
+    border-radius: 5px;
+    border-style: none;
+    padding: 0.8rem;
+    color: white;
+    background-color: #17d2ff;
+}
+
+/* Footer */
+
+.footer {
+    height: 3rem;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #17d2ff;
+    color: white;
+    overflow: visible;
+}
+
+.footer a {
+    width: 5rem;
+    height: 5rem;
+    border-style: solid;
+    border-radius: 50%;
+    border-color: white;
+    border-width: 0.5rem;
+    background-color: #17d2ff;
+    margin-bottom: 3.5rem;
+    font-size: 2rem;
+    text-align: center;
+    text-decoration: none;
+    line-height: 5rem;
+    color: black;
+}
+
+.footer a:visited {
+    color: black;
+}
