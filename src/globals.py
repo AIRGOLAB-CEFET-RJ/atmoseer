@@ -4,9 +4,6 @@
 # SUBSAMPLING_KEEP_RATIO = 0.01
 # Number of examples (train/val/test): 7649/1753/969.
 
-SUBSAMPLING_KEEP_RATIO = 0.05
-# Number of examples (train/val/test): 10229/2547/1342.
-
 API_BASE_URL = "https://apitempo.inmet.gov.br"
 
 # see https://portal.inmet.gov.br/paginas/catalogoaut

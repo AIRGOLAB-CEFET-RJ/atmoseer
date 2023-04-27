@@ -7,6 +7,23 @@ import numpy as np
 import pandas as pd
 from globals import *
 
+def get_first_and_last_days_of_year(year: int):
+    '''
+    This  function takes a year as input and returns the first and last days of that year as datetime objects
+    '''
+    assert(year <= datetime.now().year)
+
+    # Create datetime object for January 1 of the year
+    first_day = datetime(year, 1, 1)
+
+    # Calculate the last day of the year as January 1 of the following year minus one day
+    last_day = datetime(year + 1, 1, 1) - timedelta(days=1)
+
+    if year == datetime.now().year:
+        last_day = min(last_day, datetime.now().today())
+
+    return first_day, last_day
+
 def min_max_normalize(df: pd.DataFrame):
     df = (df - df.min()) / (df.max() - df.min())
     return df
@@ -79,7 +96,7 @@ def transform_wind(wind_speed, wind_direction, comp_idx):
     assert(comp_idx == 0 or comp_idx == 1)
     return wind_components(wind_speed * units('m/s'), wind_direction * units.deg)[comp_idx].magnitude
 
-def add_index(station_id, df):
+def add_datetime_index(station_id, df):
     timestamp = None
     if station_id in INMET_STATION_CODES_RJ:
         df.HR_MEDICAO = df.HR_MEDICAO.apply(format_time) # e.g., 1800 --> 18:00

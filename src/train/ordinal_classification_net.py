@@ -23,6 +23,8 @@ import torch.nn.functional as F
 from train.training_utils import *
 from train.evaluate import *
 from rainfall_prediction import ordinalencoding_to_multiclasslabels
+from train.early_stopping import *
+import rainfall_prediction as rp
 
 class OrdinalClassificationNet(nn.Module):
     def __init__(self, in_channels, num_classes):
@@ -142,4 +144,82 @@ class OrdinalClassificationNet(nn.Module):
 
       y_pred = np.vstack(outputs)
 
-      export_confusion_matrix_to_latex(y_test, y_pred)
+      export_confusion_matrix_to_latex(y_test, y_pred, rp.PredictionTask.ORDINAL_CLASSIFICATION)
+
+    def fit(self, n_epochs, optimizer, train_loader, val_loader, patience, criterion, pipeline_id):
+        # to track the training loss as the model trains
+        train_losses = []
+        # to track the validation loss as the model trains
+        valid_losses = []
+        # to track the average training loss per epoch as the model trains
+        avg_train_losses = []
+        # to track the average validation loss per epoch as the model trains
+        avg_valid_losses = []
+
+        # initialize the early_stopping object
+        early_stopping = EarlyStopping(patience=patience, verbose=True)
+
+        for epoch in range(n_epochs):
+
+            ###################
+            # train the model #
+            ###################
+            self.train()  # prep model for training
+            for data, target, w in train_loader:
+                # clear the gradients of all optimized variables
+                optimizer.zero_grad()
+
+                # forward pass: compute predicted outputs by passing inputs to the model
+                output = self(data.float())
+
+                # calculate the loss
+                loss = criterion(output, target.float(), w)
+                assert not (np.isnan(loss.item()) or loss.item() >
+                            1e6), f"Loss explosion: {loss.item()}"
+
+                loss.backward()
+
+                # perform a single optimization step (parameter update)
+                optimizer.step()
+
+                # record training loss
+                train_losses.append(loss.item())
+
+            ######################
+            # validate the model #
+            ######################
+            self.eval()  # prep model for evaluation
+            for data, target, w in val_loader:
+                # forward pass: compute predicted outputs by passing inputs to the model
+                output = self(data.float())
+                # calculate the loss
+                loss = criterion(output, target.float(), w)
+                # record validation loss
+                valid_losses.append(loss.item())
+
+            # print training/validation statistics
+            # calculate average loss over an epoch
+            train_loss = np.average(train_losses)
+            valid_loss = np.average(valid_losses)
+            avg_train_losses.append(train_loss)
+            avg_valid_losses.append(valid_loss)
+
+            epoch_len = len(str(n_epochs))
+
+            print_msg = (f'[{(epoch+1):>{epoch_len}}/{n_epochs:>{epoch_len}}] ' +
+                        f'train_loss: {train_loss:.5f} ' +
+                        f'valid_loss: {valid_loss:.5f}')
+
+            print(print_msg)
+
+            # clear lists to track next epoch
+            train_losses = []
+            valid_losses = []
+
+            early_stopping(valid_loss, self, pipeline_id)
+
+            if early_stopping.early_stop:
+                print("Early stopping activated!")
+                break
+
+        return avg_train_losses, avg_valid_losses

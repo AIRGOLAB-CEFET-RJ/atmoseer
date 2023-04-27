@@ -5,7 +5,6 @@ import numpy as np
 import os
 import random
 import matplotlib.pyplot as plt
-from train.early_stopping import *
 
 def initialize_weights(m):
     if isinstance(m, nn.Conv1d):
@@ -61,97 +60,21 @@ class DeviceDataLoader():
         return len(self.dl)
 
 
+def create_train_and_val_loaders(X_train, y_train, X_val, y_val, batch_size, train_weights, val_weights):
+    X_train = torch.from_numpy(X_train.astype('float64'))
+    X_train = torch.permute(X_train, (0, 2, 1))
+    y_train = torch.from_numpy(y_train.astype('float64'))
 
-def fit(model, n_epochs, optimizer, train_loader, val_loader, patience, criterion, pipeline_id):
-    # to track the training loss as the model trains
-    train_losses = []
-    # to track the validation loss as the model trains
-    valid_losses = []
-    # to track the average training loss per epoch as the model trains
-    avg_train_losses = []
-    # to track the average validation loss per epoch as the model trains
-    avg_valid_losses = []
+    X_val = torch.from_numpy(X_val.astype('float64'))
+    X_val = torch.permute(X_val, (0, 2, 1))
+    y_val = torch.from_numpy(y_val.astype('float64'))
 
-    # initialize the early_stopping object
-    early_stopping = EarlyStopping(patience=patience, verbose=True)
-
-    for epoch in range(n_epochs):
-
-        ###################
-        # train the model #
-        ###################
-        model.train()  # prep model for training
-        for data, target, w in train_loader:
-            # clear the gradients of all optimized variables
-            optimizer.zero_grad()
-
-            # forward pass: compute predicted outputs by passing inputs to the model
-            output = model(data.float())
-
-            # calculate the loss
-            loss = criterion(output, target.float(), w)
-            assert not (np.isnan(loss.item()) or loss.item() >
-                        1e6), f"Loss explosion: {loss.item()}"
-
-            loss.backward()
-
-            # perform a single optimization step (parameter update)
-            optimizer.step()
-
-            # record training loss
-            train_losses.append(loss.item())
-
-        ######################
-        # validate the model #
-        ######################
-        model.eval()  # prep model for evaluation
-        for data, target, w in val_loader:
-            # forward pass: compute predicted outputs by passing inputs to the model
-            output = model(data.float())
-            # calculate the loss
-            loss = criterion(output, target.float(), w)
-            # record validation loss
-            valid_losses.append(loss.item())
-
-        # print training/validation statistics
-        # calculate average loss over an epoch
-        train_loss = np.average(train_losses)
-        valid_loss = np.average(valid_losses)
-        avg_train_losses.append(train_loss)
-        avg_valid_losses.append(valid_loss)
-
-        epoch_len = len(str(n_epochs))
-
-        print_msg = (f'[{(epoch+1):>{epoch_len}}/{n_epochs:>{epoch_len}}] ' +
-                     f'train_loss: {train_loss:.5f} ' +
-                     f'valid_loss: {valid_loss:.5f}')
-
-        print(print_msg)
-
-        # clear lists to track next epoch
-        train_losses = []
-        valid_losses = []
-
-        early_stopping(valid_loss, model, pipeline_id)
-
-        if early_stopping.early_stop:
-            print("Early stopping activated!")
-            break
-
-    return avg_train_losses, avg_valid_losses
-
-
-def create_train_and_val_loaders(train_x, train_y, val_x, val_y, batch_size, train_weights, val_weights):
-    train_x = torch.from_numpy(train_x.astype('float64'))
-    train_x = torch.permute(train_x, (0, 2, 1))
-    train_y = torch.from_numpy(train_y.astype('float64'))
-
-    val_x = torch.from_numpy(val_x.astype('float64'))
-    val_x = torch.permute(val_x, (0, 2, 1))
-    val_y = torch.from_numpy(val_y.astype('float64'))
-
-    train_ds = TensorDataset(train_x, train_y, train_weights)
-    val_ds = TensorDataset(val_x, val_y, val_weights)
+    if (train_weights is None) and (val_weights is None):
+        train_ds = TensorDataset(X_train, y_train)
+        val_ds = TensorDataset(X_val, y_val)
+    else:
+        train_ds = TensorDataset(X_train, y_train, train_weights)
+        val_ds = TensorDataset(X_val, y_val, val_weights)
 
     train_loader = torch.utils.data.DataLoader(
         train_ds, batch_size=batch_size, shuffle=True)

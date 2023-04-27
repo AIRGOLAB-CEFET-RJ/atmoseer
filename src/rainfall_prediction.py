@@ -66,19 +66,22 @@ def ordinalencoding_to_multiclasslabels(pred: np.ndarray):
     return (pred > 0.5).cumprod(axis=1).sum(axis=1) - 1
 
 
-def precipitationvalues_to_binaryonehotencoding(y):
-    y_levels = map_to_binary_precipitation_levels(y)
+# def precipitationvalues_to_binaryonehotencoding(y):
+#     y_levels = map_to_binary_precipitation_levels(y)
 
-    # Create an instance of the OneHotEncoder class
-    encoder = OneHotEncoder()
+#     # Create an instance of the OneHotEncoder class
+#     encoder = OneHotEncoder()
 
-    # Fit and transform the reshaped array using the encoder
-    one_hot_encoded_y = encoder.fit_transform(y_levels)
+#     # Fit and transform the reshaped array using the encoder
+#     one_hot_encoded_y = encoder.fit_transform(y_levels)
 
-    # Convert the one hot encoded array to a numpy array
-    one_hot_encoded_y = one_hot_encoded_y.toarray()
+#     # Convert the one hot encoded array to a numpy array
+#     one_hot_encoded_y = one_hot_encoded_y.toarray()
 
-    return one_hot_encoded_y
+#     return one_hot_encoded_y
+
+def precipitationvalues_to_binary_encoding(y):
+    return map_to_binary_precipitation_levels(y)
 
 def precipitationvalues_to_ordinalencoding(y):
     # none, weak, moderate, strong, extreme = get_events_per_precipitation_level(y)

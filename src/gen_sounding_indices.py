@@ -1,27 +1,28 @@
 import pandas as pd
 from metpy.units import units
 import metpy.calc as mpcalc
+import argparse
 import sys
 
-def compute_indices(df_probe_original):
-    df_probe = df_probe_original.drop_duplicates(subset='pressure', ignore_index=True)
+def compute_indices(df_launch):
+    df_launch_cleaned = df_launch.drop_duplicates(subset='pressure', ignore_index=True)
 
-    df_probe = df_probe.dropna()
+    df_launch_cleaned = df_launch_cleaned.dropna(subset=('temperature', 'dewpoint', 'pressure'), how='any').reset_index(drop=True)
 
-    # df_probe.reset_index(inplace = True)
-    
-    pressure_values = df_probe['pressure'].to_numpy() * units.hPa
-    temperature_values = df_probe['temperature'].to_numpy() * units.degC
-    dewpoint_values = df_probe['dewpoint'].to_numpy() * units.degC
+    df_launch_cleaned = df_launch_cleaned.sort_values('pressure', ascending=False)
+        
+    pressure_values = df_launch_cleaned['pressure'].to_numpy() * units.hPa
+    temperature_values = df_launch_cleaned['temperature'].to_numpy() * units.degC
+    dewpoint_values = df_launch_cleaned['dewpoint'].to_numpy() * units.degC
 
     parcel_profile = mpcalc.parcel_profile(pressure_values, 
-                                           df_probe['temperature'][0] * units.degC, 
-                                           df_probe['dewpoint'][0] * units.degC)
+                                           df_launch_cleaned['temperature'][0] * units.degC, 
+                                           df_launch_cleaned['dewpoint'][0] * units.degC)
     parcel_profile =  parcel_profile.magnitude * units.degC
 
     indices = dict()
 
-    CAPE = mpcalc.surface_based_cape_cin(pressure_values, temperature_values, dewpoint_values)
+    CAPE = mpcalc.cape_cin(pressure_values, temperature_values, dewpoint_values, parcel_profile, which_lfc = "top", which_el = "top")
     indices['cape'] = CAPE[0].magnitude
     indices['cin'] = CAPE[1].magnitude
 
@@ -38,51 +39,42 @@ def compute_indices(df_probe_original):
     indices['showalter'] = showalter.magnitude[0]
 
     return indices
-    
-def main():
-    input_file = '../data/radiosonde/SBGL_1997-01-01_2022-12-31.csv'
-    output_file = '../data/radiosonde/SBGL_indices_1997-01-01_2022-12-31.csv'
-    
-    # input_file = '../data/radiosonde/2012-02-02.csv'
-    # output_file = '../data/radiosonde/2012-02-02_indices.csv'
-    
-    dtype_dict = {'pressure': 'float',
-                  'height': 'float',
-                  'temperature': 'float',
-                  'dewpoint': 'float',
-                  'direction': 'float',
-                  'speed': 'float',
-                  'u_wind': 'float',
-                  'v_wind': 'float',
-                  'station': 'str',
-                  'station_number': 'int',
-                  'time': 'str',
-                  'latitude': 'float',
-                  'longitude': 'float',
-                  'elevation': 'float',
-                  'pw': 'float'}
 
-    df_s = pd.read_csv(input_file, header=0, dtype=dtype_dict, on_bad_lines='skip')
+'''
+    Usage example:
+    python gen_sounding_indices.py --input_file ../data/sounding/SBGL_1997_2023.parquet.gzip --output_file ../data/sounding/SBGL_indices_1997_2023.parquet.gzip
+'''
+def main():
+    parser = argparse.ArgumentParser(description='Generate instability indices from sounding measurements.')
+    parser.add_argument('--input_file', help='input Parquet file name containing the sounding measurements', required=True)
+    parser.add_argument('--output_file', help='output Parquet file name where the indices are going to be saved', required=True)
+    args = parser.parse_args()
+
+    df_s = pd.read_parquet(args.input_file)
 
     df_indices = pd.DataFrame(columns = ['time', 'cape', 'cin', 'lift', 'k', 'total_totals', 'showalter'])
 
-    for probe_timestamp in pd.to_datetime(df_s.time).unique():
+    for launch_timestamp in pd.to_datetime(df_s.time).unique():
+        print(f"Generating instability indices for launch made at {launch_timestamp}...", end="")
         try:
-            df_probe = df_s[pd.to_datetime(df_s['time']) == probe_timestamp]
-            indices_dict = compute_indices(df_probe)
-            indices_dict['time'] = probe_timestamp
+            df_launch = df_s[pd.to_datetime(df_s['time']) == launch_timestamp]
+            indices_dict = compute_indices(df_launch)
+            indices_dict['time'] = launch_timestamp
             df_indices = pd.concat([df_indices, pd.DataFrame.from_records([indices_dict])])
+            print("Success!")
         except ValueError as e:
-            print(f'Error processing probe at timestamp {probe_timestamp}')
+            print(f'Error processing measurements made by launch at {launch_timestamp}')
             print(f'{repr(e)}')
         except IndexError as e:
-            print(f'Error processing probe at timestamp {probe_timestamp}')
+            print(f'Error processing measurements made by launch at {launch_timestamp}')
             print(f'{repr(e)}')
         except KeyError as e:
-            print(f'Error processing probe at timestamp {probe_timestamp}')
+            print(f'Error processing measurements made by launch at {launch_timestamp}')
             print(f'{repr(e)}')
 
-    df_indices.to_csv(output_file, index = False)
+    df_indices.to_parquet(args.output_file, compression='gzip', index = False)
+
+    print("Done!")
 
 if __name__ == "__main__":
     main()

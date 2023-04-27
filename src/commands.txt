@@ -1,0 +1,16 @@
+python retrieve_ws_inmet.py -s A652 -b 2007 -e 2021 --api_token <token>
+
+python rerieve_sounding.py --station_name SBGL --start_year 2023 --end_year 2023 
+
+python gen_sounding_indices.py --input_file ../data/sounding/SBGL_1997_2023.parquet.gzip --output_file ../data/sounding/SBGL_indices_1997_2023.parquet.gzip
+
+python preprocess_datasources.py -s A652 -d N
+python preprocess_datasources.py -s A652 -d R
+python preprocess_datasources.py -s A652 -d R+N
+
+python build_datasets.py -s A652 -d N
+python build_datasets.py -s A652 -d R
+python build_datasets.py -s A652 -d R+N
+
+python train_model.py -p A652_N -t ORDINAL_CLASSIFICATION
+python train_model.py -p A652_N -t BINARY_CLASSIFICATION

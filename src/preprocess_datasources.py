@@ -1,8 +1,7 @@
 import pandas as pd
-import numpy as np
 from pathlib import Path
+import argparse
 import sys
-import getopt
 from globals import *
 from util import *
 import util as util
@@ -11,33 +10,35 @@ from sklearn.impute import KNNImputer
 list_valid_datasource_combinations = ("R", "N", "R+N")
 
 def preprocess_sounding_data(sounding_data_source):
-    df = pd.read_csv(sounding_data_source)
+    print(f"Loading datasource file ({sounding_data_source}).")
+    df = pd.read_parquet(sounding_data_source)
     format_string = '%Y-%m-%d %H:%M:%S'
 
     #
-    # Add index to dataframe using the timestamps.
+    # Add index to dataframe using the observation's timestamps.
     df['Datetime'] = pd.to_datetime(df['time'], format=format_string)
     df = df.set_index(pd.DatetimeIndex(df['Datetime']))
     print(f"Range of timestamps after preprocessing {sounding_data_source}: [{min(df.index)}, {max(df.index)}]")
 
     #
-    # Remove irrelevant columns
+    # Remove time-related columns since now this information is in the index.
     df = df.drop(['time', 'Datetime'], axis = 1)
 
     #
     # Save preprocessed data.
     filename_and_extension = get_filename_and_extension(sounding_data_source)
-    df.to_parquet(filename_and_extension[0] + '_preprocessed.parquet.gzip', compression='gzip')
+    filename = filename_and_extension[0] + '_preprocessed.parquet.gzip'
+    print(f"Saving preprocessed data to {filename}")
+    df.to_parquet(filename, compression='gzip')
 
 def preprocess_numerical_model_data(numerical_model_data_source):
+    print(f"Loading datasource file ({numerical_model_data_source}).")
     df = pd.read_csv(numerical_model_data_source)
-    format_string = '%Y-%m-%d %H:%M:%S'
-    # df['time'] = df['time'].apply(lambda x: utc_to_local(x, "America/Sao_paulo", format_string))
-
-    df['Datetime'] = pd.to_datetime(df['time'], format=format_string)
 
     #
     # Add index to dataframe using the timestamps.
+    format_string = '%Y-%m-%d %H:%M:%S'
+    df['Datetime'] = pd.to_datetime(df['time'], format=format_string)
     df = df.set_index(pd.DatetimeIndex(df['Datetime']))
     df = df.drop(['time', 'Datetime', 'Unnamed: 0'], axis = 1)
     print(f"Range of timestamps after preprocessing {numerical_model_data_source}: [{min(df.index)}, {max(df.index)}]")
@@ -52,12 +53,12 @@ def preprocess_numerical_model_data(numerical_model_data_source):
     df.to_parquet(filename, compression='gzip')
 
 def preprocess_ws_datasource(station_id, ws_datasource):
-    print(f"Loading datasource file ({{ws_datasource}}).")
+    print(f"Loading datasource file ({ws_datasource}).")
     df = pd.read_csv(ws_datasource)
 
     #
     # Add index to dataframe using the timestamps.
-    df = add_index(station_id, df)
+    df = add_datetime_index(station_id, df)
 
     #
     # Drop observations in which the target variable is not defined.
@@ -85,7 +86,7 @@ def preprocess_ws_datasource(station_id, ws_datasource):
     # Normalize the weather station data. This step is necessary here due to the next step, which deals with missing values.
     # Notice that we drop the target column before normalizing, to avoid some kind of data leakage.
     # (see https://stats.stackexchange.com/questions/214728/should-data-be-normalized-before-or-after-imputation-of-missing-data)
-    print("Normalizing data before applying KNN-based imputer...", end='')
+    print("Normalizing data before applying KNNImputer...", end='')
     target_column = df[target_name]
     df = df.drop(columns=[target_name], axis=1)
     df = min_max_normalize(df)
@@ -97,7 +98,7 @@ def preprocess_ws_datasource(station_id, ws_datasource):
     imputer = KNNImputer(n_neighbors=2)
     df[:] = imputer.fit_transform(df)
     assert (not df.isnull().values.any().any())
-    print("Done dealing with missing values!")
+    print("Done!")
 
     #
     # Add the target column back to the DataFrame.
@@ -111,59 +112,36 @@ def preprocess_ws_datasource(station_id, ws_datasource):
     df.to_parquet(filename, compression='gzip')
 
 def main(argv):
-    arg_file = ""
-    sounding_data_source = None
+    parser = argparse.ArgumentParser(description='Preprocess weather station, sounding indices, and NWP data sources.')
+    parser.add_argument('-s', '--station_id', required=True, choices=INMET_STATION_CODES_RJ + COR_STATION_NAMES_RJ, help='ID of the weather station to preprocess data for.')
+    parser.add_argument('-d', '--datasources', required=True, choices=list_valid_datasource_combinations, help='Data sources to preprocess. Combination of R (sounding indices) and N (NWP data) allowed.')
+    parser.add_argument('-n', '--neighbors', default=0, type=int, help='Number of neighbor weather stations to use.')
+    args = parser.parse_args(argv[1:])
+    
+    sounding_indices_data_source = None
     numerical_model_data_source = None
-    num_neighbors = 0
-    help_message = "Usage: {0} -s <station_id> -d <data_source_spec> -n <num_neighbors>".format(argv[0])
+    num_neighbors = args.neighbors
     
-    try:
-        opts, args = getopt.getopt(argv[1:], "hs:d:n:", ["help", "station_id=", "datasources=", "neighbors="])
-    except:
-        print("Invalid syntax!")
-        print(help_message)
-        sys.exit(2)
-    
-    for opt, arg in opts:
-        if opt in ("-h", "--help"):
-            print(help_message)  # print the help message
-            sys.exit(2)
-        elif opt in ("-s", "--station_id"):
-            station_id = arg
-            if not ((station_id in INMET_STATION_CODES_RJ) or (station_id in COR_STATION_NAMES_RJ)):
-                print(f"Invalid station identifier: {station_id}")
-                print(help_message)
-                sys.exit(2)
-        elif opt in ("-f", "--file"):
-            ws_data = arg
-        elif opt in ("-d", "--datasources"):
-            if opt not in list_valid_datasource_combinations:
-                print(help_message)  # print the help message
-                sys.exit(2)
-            if arg.find('R') != -1:
-                sounding_data_source = '../data/sounding/SBGL_indices_1997-01-01_2022-12-31.csv'
-            if arg.find('N') != -1:
-                numerical_model_data_source = '../data/NWP/ERA5_A652_1997_2023.csv'
-        elif opt in ("-n", "--neighbors"):
-            num_neighbors = arg
+    if args.datasources.find('R') != -1:
+        sounding_indices_data_source = '../data/sounding/SBGL_indices_1997_2023.parquet.gzip'
+    if args.datasources.find('N') != -1:
+        numerical_model_data_source = '../data/NWP/ERA5_A652_1997_2023.csv'
 
-    print('Going to preprocess the specified data sources...')
+    print(f'Going to preprocess data sources according to user specification ({args.datasources})...')
 
-    print('Preprocessing weather station data...')
+    print('\n***Preprocessing weather station data***')
     ws_datasource = '../data/gauge/A652_2007_2023.csv'
-    preprocess_ws_datasource(station_id, ws_datasource)
+    preprocess_ws_datasource(args.station_id, ws_datasource)
     
-    if sounding_data_source is not None:
-        print('Preprocessing sounding data...')
-        preprocess_sounding_data(sounding_data_source)
+    if sounding_indices_data_source is not None:
+        print('\n***Preprocessing sounding indices data***')
+        preprocess_sounding_data(sounding_indices_data_source)
 
     if numerical_model_data_source is not None:
-        print('Preprocessing NWP data...')
+        print('\n***Preprocessing NWP data***')
         preprocess_numerical_model_data(numerical_model_data_source)
 
     print('Done!')
 
-# python preprocess_datasources.py -s A652 -d N
-# python preprocess_datasources.py -s A652 -d R
-if __name__ == "__main__":
+if __name__ == '__main__':
     main(sys.argv)
