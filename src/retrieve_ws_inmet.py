@@ -11,7 +11,7 @@ def import_from_station(station_id, beginning_year, end_year, api_token):
     end_year = min(end_year, current_year)
 
     years = list(range(beginning_year, end_year + 1))
-    df_inmet_stations = pd.read_json(API_BASE_URL + '/estacoes/T')
+    df_inmet_stations = pd.read_json(INMET_API_BASE_URL + '/estacoes/T')
     station_row = df_inmet_stations[df_inmet_stations['CD_ESTACAO'] == station_id]
     df_observations_for_all_years = None
     print(f"Downloading observations from weather station {station_id}...")
@@ -23,9 +23,9 @@ def import_from_station(station_id, beginning_year, end_year, api_token):
             last_date_of_the_end_year = datetime.strptime(datetime_str, '%Y-%m-%d')
             end_date = min(last_date_of_the_end_year, current_date)
             end_date_str = end_date.strftime("%Y-%m-%d")
-            query_str = API_BASE_URL + '/token/estacao/' + str(year) + '-01-01/' + end_date_str + '/' + station_id + "/" + api_token
+            query_str = INMET_API_BASE_URL + '/token/estacao/' + str(year) + '-01-01/' + end_date_str + '/' + station_id + "/" + api_token
         else:
-            query_str = API_BASE_URL + '/token/estacao/' + str(year) + '-01-01/' + str(year) + '-12-31/' + station_id + "/" + api_token
+            query_str = INMET_API_BASE_URL + '/token/estacao/' + str(year) + '-01-01/' + str(year) + '-12-31/' + station_id + "/" + api_token
 
         print(f"Query to be sent to server: {query_str}")
 
@@ -41,7 +41,7 @@ def import_from_station(station_id, beginning_year, end_year, api_token):
 
 def import_data(station_code, initial_year, final_year, api_token):
     if station_code == "all":
-        df_inmet_stations = pd.read_json(API_BASE_URL + '/estacoes/T')
+        df_inmet_stations = pd.read_json(INMET_API_BASE_URL + '/estacoes/T')
         station_row = df_inmet_stations[df_inmet_stations['CD_ESTACAO'].isin(INMET_STATION_CODES_RJ)]
         for j in list(range(0, len(station_row))):
             station_code = station_row['CD_ESTACAO'].iloc[j]

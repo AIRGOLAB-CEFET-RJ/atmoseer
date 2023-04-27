@@ -11,6 +11,7 @@ import math
 import argparse
 import rainfall_prediction as rp
 from subsampling import apply_subsampling
+import xarray as xr
 
 # def format_for_binary_classification(y_train, y_val, y_test):
 #     y_train_oc = map_to_binary_precipitation_levels(y_train)
@@ -67,7 +68,44 @@ def generate_windowed(df: pd.DataFrame, target_idx: int):
 
     return X, y
 
+def get_NWP_data_for_weather_station(station_id):
+    df_stations = pd.read_csv("../data/estacoes_local.csv")
+    row = df_stations[df_stations["files"] == station_id].iloc[0]
+    station_latitude = row["VL_LATITUDE"]
+    station_longitude = row["VL_LONGITUDE"]
 
+    ds = xr.open_dataset("../data/NWP/RJ_1997_2023.nc")
+    ds = ds.sel(time=slice(ds.time.min(), ds.time.max()))
+    era5_data_at_200hPa = ds.sel(level=200, longitude=station_longitude, latitude=station_latitude, method="nearest")
+    era5_data_at_700hPa = ds.sel(level=700, longitude=station_longitude, latitude=station_latitude, method="nearest")
+    era5_data_at_1000hPa = ds.sel(level=1000, longitude=station_longitude, latitude=station_latitude, method="nearest")
+
+    df_NWP_data_for_station = pd.DataFrame(
+        {
+            "time": era5_data_at_1000hPa.time,
+            
+            "Geopotential_200": era5_data_at_200hPa.z,
+            "Humidity_200": era5_data_at_200hPa.r,
+            "Temperature_200": era5_data_at_200hPa.t,
+            "WindU_200": era5_data_at_200hPa.u,
+            "WindV_200": era5_data_at_200hPa.v,
+
+            "Geopotential_700": era5_data_at_700hPa.z,
+            "Humidity_700": era5_data_at_700hPa.r,
+            "Temperature_700": era5_data_at_700hPa.t,
+            "WindU_700": era5_data_at_700hPa.u,
+            "WindV_700": era5_data_at_700hPa.v,
+
+            "Geopotential_1000": era5_data_at_1000hPa.z,
+            "Humidity_1000": era5_data_at_1000hPa.r,
+            "Temperature_1000": era5_data_at_1000hPa.t,
+            "WindU_1000": era5_data_at_1000hPa.u,
+            "WindV_1000": era5_data_at_1000hPa.v,
+        }
+    )
+
+    return df_NWP_data_for_station
+    
 def generate_windowed_split(train_df, val_df, test_df, target_name):
     target_idx = train_df.columns.get_loc(target_name)
     print(f"Position (index) of target variable {target_name}: {target_idx}")
@@ -77,7 +115,7 @@ def generate_windowed_split(train_df, val_df, test_df, target_name):
     return X_train, y_train, X_val, y_val, X_test, y_test
 
 
-def build_datasets(station_id: str, join_sounding_data_source: bool, join_numerical_model_data_source: bool, num_neighbors: int =0):
+def build_datasets(station_id: str, join_sounding_data_source: bool, join_numerical_model_data_source: bool, num_neighbors: int=0):
     '''
     This function joins a set of datasources to build datasets. These resulting datasets are used to fit the parameters of
     precipitation models down the AtmoSeer pipeline. Each datasource contributes with a group of features to build the datasets 
@@ -122,13 +160,13 @@ def build_datasets(station_id: str, join_sounding_data_source: bool, join_numeri
     joined_df = df_ws
 
     if join_numerical_model_data_source:
-        print(f"Loading NWP (ERA5) datasource...", end= "")
-        df_nwp_era5 = pd.read_parquet('../data/NWP/ERA5_A652_1997_2023_preprocessed.parquet.gzip')
+        print(f"Loading NWP (ERA5) data near the weather station {station_id}...", end= "")
+        # df_nwp_era5 = pd.read_parquet('../data/NWP/ERA5_A652_1997_2023_preprocessed.parquet.gzip')
+        df_nwp_era5 = get_NWP_data_for_weather_station(station_id)
         print(f"Done! Shape = {df_nwp_era5.shape}.")
         assert (not df_nwp_era5.isnull().values.any().any())
-        print(f"NWP data loaded. Shape = {df_nwp_era5.shape}.")
+
         joined_df = pd.merge(df_ws, df_nwp_era5, how='left', left_index=True, right_index=True)
-        # merged_df = merged_df.join(df_nwp_era5)
 
         print(f"NWP data successfully joined; resulting shape = {joined_df.shape}.")
         print(df_ws.index.difference(joined_df.index).shape)
@@ -143,12 +181,11 @@ def build_datasets(station_id: str, join_sounding_data_source: bool, join_numeri
         joined_df = joined_df.dropna()
         shape_after_dropna = joined_df.shape
         print(f"Removed NaN rows in merge data; Shapes before/after dropna: {shape_before_dropna}/{shape_after_dropna}.")
-        # assert(merged_df.shape[0] == df_ws.shape[0])
 
     assert (not joined_df.isnull().values.any().any())
 
     if join_sounding_data_source:
-        print(f"Loading sounding datasource...", end= "")
+        print(f"Loading sounding data...", end= "")
         df_sounding = pd.read_parquet('../data/sounding/SBGL_indices_1997_2023_preprocessed.parquet.gzip')
         print(f"Done! Shape = {df_sounding.shape}.")
 
@@ -253,17 +290,12 @@ def build_datasets(station_id: str, join_sounding_data_source: bool, join_numeri
 
     #
     # Subsampling
-
     print('**********Subsampling************')
-    print(f'- Shapes before subsampling (Y_train/y_val/y_test): {y_train.shape}, {y_val.shape}, {y_test.shape}')
-
+    print(f'- Shapes before subsampling (y_train/y_val/y_test): {y_train.shape}, {y_val.shape}, {y_test.shape}')
     print("Subsampling train data.")
     X_train, y_train = apply_subsampling(X_train, y_train, "NEGATIVE")
     print("Subsampling val data.")
     X_val, y_val = apply_subsampling(X_val, y_val, "NEGATIVE")
-    # print("Subsampling test data.")
-    # X_test, y_test = apply_naive_subsampling(X_test, y_test)
-
     print('- Min precipitation values (train/val/test) after subsampling: %.5f, %.5f, %.5f' %
           (np.min(y_train), np.min(y_val), np.min(y_test)))
     print('- Max precipitation values (train/val/test) after subsampling: %.5f, %.5f, %.5f' %
@@ -271,7 +303,7 @@ def build_datasets(station_id: str, join_sounding_data_source: bool, join_numeri
     print(f'- Shapes (y_train/y_val/y_test) after subsampling: {y_train.shape}, {y_val.shape}, {y_test.shape}')
 
     #
-    # Write numpy arrays to a parquet file
+    # Write numpy arrays for train/val/test datast to a single pickle file
     print(
         f'Number of examples (train/val/test): {len(X_train)}/{len(X_val)}/{len(X_test)}.')
     filename = '../data/datasets/' + pipeline_id + ".pickle"
@@ -285,7 +317,7 @@ def build_datasets(station_id: str, join_sounding_data_source: bool, join_numeri
 
 def main(argv):
     parser = argparse.ArgumentParser(
-        description="""This script builds the train/val/test datasets from the user-specified data sources.""")
+        description="""This script builds the train/val/test datasets for a given weather station, by using the user-specified data sources.""")
     parser.add_argument('-s', '--station_id', type=str, required=True, help='station id')
     parser.add_argument('-d', '--datasources', type=str, help='data source spec')
     parser.add_argument('-n', '--num_neighbors', type=int, default = 0, help='number of neighbors')

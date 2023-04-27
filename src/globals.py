@@ -1,10 +1,4 @@
-# SUBSAMPLING_KEEP_RATIO = 0.1
-# Number of examples (train/val/test): 13360/3441/1793.
-
-# SUBSAMPLING_KEEP_RATIO = 0.01
-# Number of examples (train/val/test): 7649/1753/969.
-
-API_BASE_URL = "https://apitempo.inmet.gov.br"
+INMET_API_BASE_URL = "https://apitempo.inmet.gov.br"
 
 # see https://portal.inmet.gov.br/paginas/catalogoaut
 INMET_STATION_CODES_RJ = ('A636', 

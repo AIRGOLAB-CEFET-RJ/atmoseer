@@ -32,7 +32,7 @@ def preprocess_sounding_data(sounding_data_source):
     df.to_parquet(filename, compression='gzip')
 
 def preprocess_numerical_model_data(numerical_model_data_source):
-    print(f"Loading datasource file ({numerical_model_data_source}).")
+    print(f"Loading NWP datasource file ({numerical_model_data_source}).")
     df = pd.read_csv(numerical_model_data_source)
 
     #
