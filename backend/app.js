@@ -18,13 +18,20 @@ db.once('open', function() {
 
     const Sounding = require('./dbmodels/sounding')
 
-    //Verificar se os dados já estão lá e se não enviar pro db
-    let response = '';
+    //TODO:Verificar se os dados já estão lá e se não, enviar pro db
+    let response = ''
+    let date = new Date()
+    let hour = (0).toLocaleString('en-US', {minimumIntegerDigits: 2, useGrouping:false})
+    if (date.getHours() >= 12) hour = 12
 
-    http.get('http://weather.uwyo.edu/cgi-bin/sounding?region=samer&TYPE=TEXT%3ALIST&YEAR=2023&MONTH=04&FROM=2612&TO=2612&STNM=83746', (res) => {
+    http.get('http://weather.uwyo.edu/cgi-bin/sounding?region=samer&TYPE=TEXT%3ALIST&STNM=83746'+ 
+    '&YEAR='+ date.getFullYear() + 
+    '&MONTH='+ (date.getMonth() + 1) +
+    '&FROM='+ date.getDate() + hour + 
+    '&TO='+ date.getDate() + hour, (res) => {
         res.on('data', (chunk) => {
-            response += chunk;
-          });
+            response += chunk
+        });
       
         res.on('end', () => {
             const $ = cheerio.load(response)
