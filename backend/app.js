@@ -17,6 +17,7 @@ db.once('open', function() {
     console.log('DB connection was sucessful')
 
     const Sounding = require('./dbmodels/sounding')
+    const ERA5 = require('./dbmodels/ERA5')
 
     //TODO:Verificar se os dados já estão lá e se não, enviar pro db
     let response = ''
