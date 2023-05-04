@@ -5,10 +5,9 @@
     Its code uses the WyomingUpperAir class in the siphon library. In particular, 
     the request_data method of the WyomingUpperAir class takes two arguments: 
      - the date of the sounding launch as a datetime object, 
-     - the station ID as a string.
+     - the atmospheric sounding station ID (as a string).
     
-    Here's an example of how to use this script:
-    python import_sounding.py --station_id SBGL --start_year 2023 --end_year 2023 
+    For an overview of weather baloons, see https://www.weather.gov/media/key/Weather-Balloons.pdf
 '''
 import pandas as pd
 import sys
@@ -18,6 +17,7 @@ from siphon.simplewebservice.wyoming import WyomingUpperAir
 import util as util
 import time
 import requests
+from globals import *
 
 def get_data_for_year_and_hour_of_day(station_id, first_day, last_day, hour_of_day):
     unsuccesfull_launchs = 0
@@ -79,7 +79,7 @@ def get_data(station_id, start_year, end_year):
         unsuccesfull_launchs += nb_unsuccessful_launchs_of_year
 
     print(f"Done! There were {unsuccesfull_launchs} unsuccessful launchs in the specified period.")
-    filename = '../data/sounding/' + station_id + '_'+ str(start_year) + '_' + str(end_year) + '.csv'
+    filename = AS_DATA_DIR + station_id + '_'+ str(start_year) + '_' + str(end_year) + '.csv'
     print(f"Saving data on {df_all_launchs.shape[0]} observations to file {filename}.", end=" ")
     df_all_launchs.to_parquet(filename, compression='gzip', index = False)
     print("Done!")
@@ -92,7 +92,7 @@ def main(argv):
         description="""This script provides a simple interface for retrieving upper air
         sounding observations made by a user-provided station from the University of Wyoming Upper Air Archive.""",
         prog=sys.argv[0])
-    parser.add_argument('-s', '--station_id', help='Sounding station ID', default='SBGL')
+    parser.add_argument('-s', '--station_id', help='Atmospheric sounding station ID', default='SBGL')
     parser.add_argument('-b', '--start_year', help='Start year', required=True)
     parser.add_argument('-e', '--end_year', help='End year', required=True)
     args = parser.parse_args()

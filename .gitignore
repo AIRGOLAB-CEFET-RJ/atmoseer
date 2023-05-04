@@ -5,3 +5,14 @@ backup/
  __pycache__/
  *.pyc
 
+src/__pycache__/globals.cpython-38.pyc
+src/__pycache__/globals.cpython-310.pyc
+src/__pycache__/util.cpython-38.pyc
+src/__pycache__/util.cpython-310.pyc
+src/utils/__pycache__/near_stations.cpython-38.pyc
+src/__pycache__/globals.cpython-310.pyc
+src/__pycache__/util.cpython-310.pyc
+src/__pycache__/util.cpython-310.pyc
+src/__pycache__/util.cpython-310.pyc
+src/__pycache__/globals.cpython-310.pyc
+src/__pycache__/util.cpython-310.pyc

@@ -54,8 +54,6 @@ def compute_weights_for_ordinal_classification(y):
 def weighted_mse_loss(input, target, weight):
     return (weight * (input - target) ** 2).sum()
 
-import torch.nn.functional as F
-
 class WeightedBCELoss(torch.nn.Module):
     def __init__(self, pos_weight=None, neg_weight=None):
         super(WeightedBCELoss, self).__init__()
@@ -109,18 +107,25 @@ class WeightedBCELoss(torch.nn.Module):
         
     #     return loss.mean()
 
-def train(X_train, y_train, X_val, y_val, prediction_task_id, pipeline_id):
-    N_EPOCHS = 2000
-    PATIENCE = 1000
-    BATCH_SIZE = 1024
-    WEIGHT_DECAY = 1e-6
+hyper_params_dics_bc = {
+    "N_EPOCHS" : 3500,
+    "PATIENCE" : 1000,
+    "BATCH_SIZE" : 1024,
+    "WEIGHT_DECAY" : 1e-6,
+    "LEARNING_RATE" : .3e-3
+}
 
+def train(X_train, y_train, X_val, y_val, prediction_task_id, pipeline_id):
     NUM_FEATURES = X_train.shape[2]
     print(f"Input dimensions of the data matrix: {NUM_FEATURES}")
 
     # model.apply(initialize_weights)
 
     if prediction_task_id == rp.PredictionTask.ORDINAL_CLASSIFICATION:
+        N_EPOCHS = 3500
+        PATIENCE = 1000
+        BATCH_SIZE = 1024
+        WEIGHT_DECAY = 1e-6
         print("- Prediction task: ordinal classification.")
         train_weights = compute_weights_for_ordinal_classification(y_train)
         val_weights = compute_weights_for_ordinal_classification(y_val)
@@ -141,7 +146,12 @@ def train(X_train, y_train, X_val, y_val, prediction_task_id, pipeline_id):
         print("- Prediction task: binary classification.")
         train_weights = None
         val_weights = None
-        LEARNING_RATE = .3e-3
+        
+        N_EPOCHS = hyper_params_dics_bc["N_EPOCHS"]
+        PATIENCE = hyper_params_dics_bc["PATIENCE"]
+        BATCH_SIZE = hyper_params_dics_bc["BATCH_SIZE"]
+        WEIGHT_DECAY = hyper_params_dics_bc["WEIGHT_DECAY"]
+        LEARNING_RATE = hyper_params_dics_bc["LEARNING_RATE"]
 
         # weights = torch.FloatTensor([1.0, 5.0]) 
         loss = nn.BCELoss()
@@ -237,7 +247,7 @@ def main(argv):
 
     #
     # Load numpy arrays (stored in a pickle file) from disk
-    filename = "../data/datasets/" + pipeline_id + ".pickle"
+    filename = globals.DATASETS_DIR + pipeline_id + ".pickle"
     print(f"Loading train/val/test datasets from {filename}.")
     file = open(filename, 'rb')
     (X_train, y_train, X_val, y_val, X_test, y_test) = pickle.load(file)
@@ -261,9 +271,8 @@ def main(argv):
     model.load_state_dict(torch.load('../models/best_' + pipeline_id + '.pt'))
 
     y_test = rp.precipitationvalues_to_binary_encoding(y_test)
-    # print(f"- Shape of one-hot-encoded vector (y_test): {y_test.shape}")
 
-    model.evaluate(X_test, y_test)
+    model.print_evaluation_report(pipeline_id, X_test, y_test, hyper_params_dics_bc)
 
     print("--- %s seconds ---" % (time.time() - start_time))
 

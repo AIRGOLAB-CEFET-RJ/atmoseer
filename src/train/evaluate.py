@@ -17,15 +17,12 @@ def mean_bias_error(y_true, y_pred):
     MBE = np.mean(y_pred - y_true)
     return MBE
 
-
 def export_confusion_matrix_to_latex(y_true, y_pred, prediction_task):
-    print('***Classification_report***')
-    print(skl.classification_report(y_true, y_pred))
     if prediction_task == rp.PredictionTask.BINARY_CLASSIFICATION:
         df = pd.DataFrame(
             confusion_matrix(y_true, y_pred, labels=[0, 1]),
-            index=['NO_RAIN', 'RAIN'],
-            columns=['NO_RAIN', 'RAIN'],
+            index=['NORAIN', 'RAIN'],
+            columns=['NORAIN', 'RAIN'],
         )
     elif prediction_task == rp.PredictionTask.ORDINAL_CLASSIFICATION:
         df = pd.DataFrame(

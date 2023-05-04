@@ -1,37 +1,37 @@
-import pandas as pd
-import sys, getopt
+import sys
 from datetime import datetime
 import time
 import cdsapi
 from pathlib import Path
 import xarray as xr
-import requests
+import argparse
+import sys
 
 """
     For using the CDS API to download ERA-5 data consult: https://cds.climate.copernicus.eu/api-how-to
 """
 
+# North -22°, West -44°, South -23°, East -42°
+REGION_OF_INTEREST = [-22, -44, -23, -42]
 
-def get_data(start_date, end_date):
+def get_data(start_year, end_year):
 
-    today = datetime.today()
-    end_date = min([end_date, today.strftime("%Y")])
+    end_year = min([end_year, datetime.today().year])
 
-    file = "RJ_" + str(start_date) + "_" + str(end_date)
+    file = "RJ_" + str(start_year) + "_" + str(end_year)
 
     file_exist = Path("../data/NWP/ERA5/" + file + ".nc")
+
+    months = range(1, 12+1)
 
     if file_exist.is_file():
         ds = xr.open_dataset("../data/NWP/ERA5/" + file + ".nc")
     else:
         c = cdsapi.Client()
-
-        unsuccesfully_downloaded_probes = 0
-
-        years = list(map(str, range(int(start_date), int(end_date) + 1)))
+        years = list(map(str, range(int(start_year), int(end_year) + 1)))
         for year in years:
-            for pressure_level in ['200', '700', '1000']:
-                print(f"Downloading pressure data at level {pressure_level}hPa for year {year}...", end="")
+            for month in months:
+                print(f"Downloading ERA5 data at month {month} of year {year}...", end="")
                 try:
                     c.retrieve(
                         "reanalysis-era5-pressure-levels",
@@ -43,27 +43,16 @@ def get_data(start_date, end_date):
                                 "relative_humidity",
                                 "temperature",
                                 "u_component_of_wind",
-                                "v_component_of_wind",
+                                "v_component_of_wind"
                             ],
                             "pressure_level": [
-                                pressure_level
+                                '200', '700', '1000'
                             ],
                             "year": [
                                 year,
                             ],
                             "month": [
-                                "01",
-                                "02",
-                                "03",
-                                "04",
-                                "05",
-                                "06",
-                                "07",
-                                "08",
-                                "09",
-                                "10",
-                                "11",
-                                "12",
+                                str(month)
                             ],
                             "day": [
                                 "01",
@@ -124,14 +113,9 @@ def get_data(start_date, end_date):
                                 "22:00",
                                 "23:00",
                             ],
-                            "area": [
-                                -22,
-                                -44,
-                                -23,
-                                -42,
-                            ],
+                            "area": REGION_OF_INTEREST,
                         },
-                        "../data/NWP/ERA5/RJ_" + year + "_" + pressure_level + ".nc",
+                        "../data/NWP/ERA5/RJ_" + year + "_" + str(month) + ".nc",
                     )
                     print("Done!")
                 except Exception as e:
@@ -140,49 +124,36 @@ def get_data(start_date, end_date):
 
         ds = None
         for year in years:
-            for pressure_level in ['200', '700', '1000']:
-                if ds == None:
-                    ds = xr.open_dataset("../data/NWP/ERA5/RJ_" + year + "_" + pressure_level + ".nc")
+            for month in months:
+                if ds is None:
+                    ds = xr.open_dataset("../data/NWP/ERA5/RJ_" + year + "_" + str(month) + ".nc")
                 else:
-                    ds_aux = xr.open_dataset("../data/NWP/ERA5/RJ_" + year + "_" + pressure_level +  + ".nc")
+                    ds_aux = xr.open_dataset("../data/NWP/ERA5/RJ_" + year + "_" + str(month) + ".nc")
                     ds = ds.merge(ds_aux)
 
-        print(f"Done! Number of unsuccesfully downloaded probes: {unsuccesfully_downloaded_probes}.")
+        print(f"Done!", end="")
         filename = "../data/NWP/ERA5/" + file + ".nc"
         print(f"Saving dowloaded data to {filename}")
         ds.to_netcdf(filename)
 
-
 def main(argv):
-    help_message = "Usage: {0} -b <start_year> -e <end_year>".format(argv[0])
+    parser = argparse.ArgumentParser(description='Retrieve ERA5 data between two given years.')
+    parser.add_argument('-b', '--start_year', type=int, required=True, help='Start year')
+    parser.add_argument('-e', '--end_year', type=int, required=True, help='End year')
 
-    try:
-        opts, args = getopt.getopt(argv[1:], "hb:e:", ["help", "start_year=", "end_year="])
-    except:
-        print("Invalid arguments. Use -h or --help for more information.")
-        sys.exit(2)
+    args = parser.parse_args(argv[1:])
 
-    for opt, arg in opts:
-        if opt in ("-h", "--help"):
-            print(help_message)
-            sys.exit(2)
-        elif opt in ("-b", "--start_date"):
-            try:
-                start_date = arg
-            except ValueError:
-                print("Invalid date format. Use -h or --help for more information.")
-                sys.exit(2)
-        elif opt in ("-e", "--end_date"):
-            try:
-                end_date = arg
-            except ValueError:
-                print("Invalid date format. Use -h or --help for more information.")
-                sys.exit(2)
+    start_year = args.start_year
+    end_year = args.end_year
 
-    assert start_date <= end_date
+    # ERA5 data goes back to the year 1940. 
+    # see https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-pressure-levels?tab=overview
+    assert start_year >= 1940 
 
-    get_data(start_date, end_date)
+    assert start_year <= end_year
 
+    get_data(start_year, end_year)
 
 if __name__ == "__main__":
     main(sys.argv)
+

@@ -68,21 +68,65 @@ def generate_windowed(df: pd.DataFrame, target_idx: int):
 
     return X, y
 
-def get_NWP_data_for_weather_station(station_id):
-    df_stations = pd.read_csv("../data/estacoes_local.csv")
-    row = df_stations[df_stations["files"] == station_id].iloc[0]
+def get_NWP_data_for_weather_station(station_id, initial_datetime, final_datetime):
+    df_stations = pd.read_csv("../data/ws/INMET_WS_Stations.csv")
+    row = df_stations[df_stations["STATION_ID"] == station_id].iloc[0]
     station_latitude = row["VL_LATITUDE"]
     station_longitude = row["VL_LONGITUDE"]
 
-    ds = xr.open_dataset("../data/NWP/RJ_1997_2023.nc")
-    ds = ds.sel(time=slice(ds.time.min(), ds.time.max()))
+    print(f"Weather station {station_id} is located at lat/long = {station_latitude}/{station_longitude}")
+
+    print(f"Selecting NWP data between {initial_datetime} and {final_datetime}.")
+    
+    ds = xr.open_dataset("../data/NWP/ERA5.nc")
+    print(f"Size.0: {ds.sizes['time']}")
+
+    # Get the minimum and maximum values of the 'time' coordinate
+    # time_min = ds.coords['time'].min().item()
+    # time_max = ds.coords['time'].max().item()
+    # print(f"Range of timestamps in the original NWP data: [{ds.time.min()}, {ds.time.max()}]")
+    # print(f"Range of timestamps in the original NWP data: [{time_min}, {time_max}]")
+    time_min = ds.time.min().values
+    time_max = ds.time.max().values
+    print(f"Range of timestamps in the original NWP data: [{time_min}, {time_max}]")
+
+    # If we want to properly merge the two data sources, then we have to consider 
+    # only the range of periods in which these data sources intersect.
+    time_min = max(time_min, initial_datetime)
+    time_max = min(time_max, final_datetime)
+    print(f"Range of timestamps to be selected: [{time_min}, {time_max}]")
+
+    ds = ds.sel(time=slice(time_min, time_max))
+    print(f"Size.1: {ds.sizes['time']}")
+
     era5_data_at_200hPa = ds.sel(level=200, longitude=station_longitude, latitude=station_latitude, method="nearest")
+    print(f"Size.2: {era5_data_at_200hPa.sizes['time']}")
+
     era5_data_at_700hPa = ds.sel(level=700, longitude=station_longitude, latitude=station_latitude, method="nearest")
+    print(f"Size.3: {era5_data_at_700hPa.sizes['time']}")
+
     era5_data_at_1000hPa = ds.sel(level=1000, longitude=station_longitude, latitude=station_latitude, method="nearest")
+    print(f"Size.4: {era5_data_at_1000hPa.sizes['time']}")
+
+    print(">>><<<")
+    print(type(era5_data_at_1000hPa.time))
+    print("-1-")
+    print(era5_data_at_200hPa.time.values)
+    print("-2-")
+    print(era5_data_at_200hPa.z.values)
+    print("-3-")
+    print(era5_data_at_700hPa.z.values.shape)
+    print("-4-")
+    print(era5_data_at_700hPa.time.values)
+    print("-5-")
+    print(era5_data_at_700hPa.z.values)
+    print("-6-")
+    print(era5_data_at_700hPa.z.values.shape)
+    print(">>><<<")
 
     df_NWP_data_for_station = pd.DataFrame(
         {
-            "time": era5_data_at_1000hPa.time,
+            "time": era5_data_at_1000hPa.time.values,
             
             "Geopotential_200": era5_data_at_200hPa.z,
             "Humidity_200": era5_data_at_200hPa.r,
@@ -100,9 +144,28 @@ def get_NWP_data_for_weather_station(station_id):
             "Humidity_1000": era5_data_at_1000hPa.r,
             "Temperature_1000": era5_data_at_1000hPa.t,
             "WindU_1000": era5_data_at_1000hPa.u,
-            "WindV_1000": era5_data_at_1000hPa.v,
+            "WindV_1000": era5_data_at_1000hPa.v
         }
     )
+
+    # Drop rows with at least one NaN
+    print(f"Shape before dropping NaN values is {df_NWP_data_for_station.shape}")
+    df_NWP_data_for_station = df_NWP_data_for_station.dropna(how='any')
+    print(f"Shape before dropping NaN values is {df_NWP_data_for_station.shape}")
+
+    print("Success!")
+
+    #
+    # Add index to dataframe using the timestamps.
+    format_string = '%Y-%m-%d %H:%M:%S'
+    df_NWP_data_for_station['Datetime'] = pd.to_datetime(df_NWP_data_for_station['time'], format=format_string)
+    df_NWP_data_for_station = df_NWP_data_for_station.set_index(pd.DatetimeIndex(df_NWP_data_for_station['Datetime']))
+    df_NWP_data_for_station = df_NWP_data_for_station.drop(['time', 'Datetime'], axis = 1)
+    print(f"Range of timestamps in the selected slice of NWP data: [{min(df_NWP_data_for_station.index)}, {max(df_NWP_data_for_station.index)}]")
+
+    print(df_NWP_data_for_station)
+
+    assert (not df_NWP_data_for_station.isnull().values.any().any())
 
     return df_NWP_data_for_station
     
@@ -115,7 +178,7 @@ def generate_windowed_split(train_df, val_df, test_df, target_name):
     return X_train, y_train, X_val, y_val, X_test, y_test
 
 
-def build_datasets(station_id: str, join_sounding_data_source: bool, join_numerical_model_data_source: bool, num_neighbors: int=0):
+def build_datasets(station_id: str, join_as_data_source: bool, join_nwp_data_source: bool, num_neighbors: int=0):
     '''
     This function joins a set of datasources to build datasets. These resulting datasets are used to fit the parameters of
     precipitation models down the AtmoSeer pipeline. Each datasource contributes with a group of features to build the datasets 
@@ -127,23 +190,21 @@ def build_datasets(station_id: str, join_sounding_data_source: bool, join_numeri
     '''
 
     pipeline_id = station_id
-    if join_numerical_model_data_source:
+    if join_nwp_data_source:
         pipeline_id = pipeline_id + '_N'
-    if join_sounding_data_source:
+    if join_as_data_source:
         pipeline_id = pipeline_id + '_R'
 
     if num_neighbors > 0:
         pipeline_id = pipeline_id + '_NN' + str(num_neighbors)
 
     print(f"Loading observations for weather station {station_id}...", end= "")
-    df_ws = pd.read_parquet("../data/gauge/" + station_id + "_2007_2023_preprocessed.parquet.gzip")
+    df_ws = pd.read_parquet(WS_INMET_DATA_DIR + station_id + "_preprocessed.parquet.gzip")
     print(f"Done! Shape = {df_ws.shape}.")
-    # df_ws = pd.read_parquet(
-    #     '../data/gauge/A652_2007_2023_preprocessed.parquet.gzip')
 
     ####
-    # Apply a filtering step (e.g., to disregard all observations made between what we 
-    # consider to be the drought period (months of June, July, and August).
+    # Apply a filtering step, with the purpose of disregarding all observations made between  
+    # what we consider to be the drought period of a year (months of June, July, and August).
     ####
     print(f"Applying month filtering...", end=' ')
     shape_before_month_filtering = df_ws.shape
@@ -158,11 +219,12 @@ def build_datasets(station_id: str, join_sounding_data_source: bool, join_numeri
     # and sequentially join the other user-specified datasources.
     #####
     joined_df = df_ws
+    min_datetime = min(joined_df.index)
+    max_datetime = max(joined_df.index)
 
-    if join_numerical_model_data_source:
+    if join_nwp_data_source:
         print(f"Loading NWP (ERA5) data near the weather station {station_id}...", end= "")
-        # df_nwp_era5 = pd.read_parquet('../data/NWP/ERA5_A652_1997_2023_preprocessed.parquet.gzip')
-        df_nwp_era5 = get_NWP_data_for_weather_station(station_id)
+        df_nwp_era5 = get_NWP_data_for_weather_station(station_id, min_datetime, max_datetime)
         print(f"Done! Shape = {df_nwp_era5.shape}.")
         assert (not df_nwp_era5.isnull().values.any().any())
 
@@ -184,13 +246,13 @@ def build_datasets(station_id: str, join_sounding_data_source: bool, join_numeri
 
     assert (not joined_df.isnull().values.any().any())
 
-    if join_sounding_data_source:
+    if join_as_data_source:
         print(f"Loading sounding data...", end= "")
-        df_sounding = pd.read_parquet('../data/sounding/SBGL_indices_1997_2023_preprocessed.parquet.gzip')
+        df_sounding = pd.read_parquet(AS_DATA_DIR + 'SBGL_indices_1997_2023_preprocessed.parquet.gzip')
         print(f"Done! Shape = {df_sounding.shape}.")
 
         joined_df = pd.merge(joined_df, df_sounding, how='left', left_index=True, right_index=True)
-        print(f"Sounding data successfully joined; resulting shape = {joined_df.shape}.")
+        print(f"Atmospheric sounding data successfully joined; resulting shape = {joined_df.shape}.")
 
         print(f"Doing interpolation to imput missing values on the sounding indices...", end= "")
         joined_df['cape'] = joined_df['cape'].interpolate(method='linear')
@@ -217,7 +279,7 @@ def build_datasets(station_id: str, join_sounding_data_source: bool, join_numeri
 
     #
     # Save train/val/test DataFrames for future error analisys.
-    filename = '../data/datasets/' + pipeline_id + '.parquet.gzip'
+    filename = DATASETS_DIR + pipeline_id + '.parquet.gzip'
     print(f'Saving joined data source for pipeline {pipeline_id} to file {filename}.')
     joined_df.to_parquet(filename, compression='gzip')
 
@@ -249,9 +311,9 @@ def build_datasets(station_id: str, join_sounding_data_source: bool, join_numeri
     #
     # Save train/val/test DataFrames for future error analisys.
     print(f'Saving each train/val/test dataset for pipeline {pipeline_id} as a parquet file.')
-    df_train.to_parquet('../data/datasets/' + pipeline_id + '_train.parquet.gzip', compression='gzip')
-    df_val.to_parquet('../data/datasets/' + pipeline_id + '_val.parquet.gzip', compression='gzip')
-    df_test.to_parquet('../data/datasets/' + pipeline_id + '_test.parquet.gzip', compression='gzip')
+    df_train.to_parquet(DATASETS_DIR + pipeline_id + '_train.parquet.gzip', compression='gzip')
+    df_val.to_parquet(DATASETS_DIR + pipeline_id + '_val.parquet.gzip', compression='gzip')
+    df_test.to_parquet(DATASETS_DIR + pipeline_id + '_test.parquet.gzip', compression='gzip')
 
     #
     # Normalize the columns in train/val/test dataframes. This is done as a preparation step for appllying
@@ -306,7 +368,7 @@ def build_datasets(station_id: str, join_sounding_data_source: bool, join_numeri
     # Write numpy arrays for train/val/test datast to a single pickle file
     print(
         f'Number of examples (train/val/test): {len(X_train)}/{len(X_val)}/{len(X_test)}.')
-    filename = '../data/datasets/' + pipeline_id + ".pickle"
+    filename = DATASETS_DIR + pipeline_id + ".pickle"
     print(f'Dumping train/val/test np arrays to pickle file {filename}.', end = " ")
     file = open(filename, 'wb')
     ndarrays = (X_train, y_train, 

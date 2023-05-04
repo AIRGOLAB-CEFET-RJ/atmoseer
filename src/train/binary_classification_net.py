@@ -9,6 +9,7 @@ from train.early_stopping import *
 import rainfall_prediction as rp
 import functools
 import operator
+import pprint
 
 # class ResidualBlock(nn.Module):
 #     def __init__(self, in_channels, out_channels, kernel_size=3, padding=1):
@@ -176,17 +177,20 @@ class BinaryClassificationNet(RainfallClassificationBase):
         super(BinaryClassificationNet, self).__init__()
 
         self.feature_extractor = nn.Sequential(
-            nn.Conv1d(in_channels=in_channels, out_channels=32, kernel_size=3, padding=3),
+            nn.Conv1d(in_channels=in_channels, out_channels=16, kernel_size=3, padding=3),
             nn.ReLU(inplace=True),
-            # nn.Dropout(p=0.5),
-            nn.Conv1d(in_channels=32, out_channels=64, kernel_size=3, padding=3),
-            nn.ReLU(inplace=True),
-            # nn.Dropout(p=0.5),
-            nn.Conv1d(in_channels=64, out_channels=32, kernel_size=3, padding=3),
-            nn.ReLU(inplace=True),
-            # nn.Dropout(p=0.5),
-            nn.Conv1d(in_channels=32, out_channels=16, kernel_size=3, padding=3),
-            nn.ReLU(inplace=True)
+            nn.Dropout1d(p=0.5),
+
+            # nn.Conv1d(in_channels=32, out_channels=64, kernel_size=3, padding=3),
+            # nn.ReLU(inplace=True),
+            # nn.Dropout1d(p=0.5),
+
+            # nn.Conv1d(in_channels=64, out_channels=32, kernel_size=3, padding=3),
+            # nn.ReLU(inplace=True),
+            # # nn.Dropout(p=0.5),
+            # nn.Conv1d(in_channels=32, out_channels=16, kernel_size=3, padding=3),
+            # nn.ReLU(inplace=True)
+
             # nn.Dropout(p=0.5)
             # self.bn4 = nn.BatchNorm1d(64)
             # self.dropout4 = nn.Dropout(p=0.2)
@@ -215,50 +219,53 @@ class BinaryClassificationNet(RainfallClassificationBase):
         out = out.view(out.shape[0], -1)
         out = self.classifier(out)
         return out
-        # x = self.conv1d_1(x)
-        # # x = self.bn1(x)
-        # x = self.gelu(x)
-        # # x = self.dropout1(x)
 
-        # x = self.conv1d_2(x)
-        # # x = self.bn2(x)
-        # x = self.gelu(x)
-        # # x = self.dropout2(x)
+    # def predict(self, X):
+    #     print('Making predictions with binary classification model...')
+    #     self.eval()
+    #     X_as_tensor = torch.from_numpy(X.astype('float64'))
+    #     X_as_tensor = torch.permute(X_as_tensor, (0, 2, 1))
+    #     with torch.no_grad():
+    #         y_pred = self(X_as_tensor.float())
+    #         y_pred = y_pred.detach().cpu().numpy()
+
+    #     y_pred = y_pred.round().ravel()
+    #     assert np.all(np.logical_or(y_pred == 0, y_pred == 1))
+    #     return y_pred
+
+    def print_evaluation_report(self, pipeline_id, X_test, y_test, hyper_params_dics):
+        print("\\begin{verbatim}")
+        print(f"***Evaluation report for pipeline {pipeline_id}***")
+        print("\\end{verbatim}")
+
+        print("\\begin{verbatim}")
+        print("***Hyperparameters***")
+        pprint.pprint(hyper_params_dics)
+        print("\\end{verbatim}")
         
-        # x = self.conv1d_3(x)
-        # # x = self.bn3(x)
-        # x = self.gelu(x)
-        # # x = self.dropout3(x)
+        print("\\begin{verbatim}")
+        print("***Model architecture***")
+        print(self)
+        print("\\end{verbatim}")
 
-        # x = self.conv1d_4(x)
-        # # x = self.bn4(x)
-        # x = self.gelu(x)
-        # # x = self.dropout4(x)
+        print("\\begin{verbatim}")
+        print('***Confusion matrix***')
+        print("\\end{verbatim}")
+        y_pred = self.evaluate(X_test, y_test)
+        export_confusion_matrix_to_latex(y_test, y_pred, rp.PredictionTask.BINARY_CLASSIFICATION)
 
-        # x = x.view(x.shape[0], -1)
-        # x = self.fc1(x)
-        # x = self.gelu(x)
-        # x = self.fc2(x)
-        # x = self.sigmoid(x)
+        print("\\begin{verbatim}")
+        print('***Classification report***')
+        print(skl.classification_report(y_test, y_pred))
+        print("\\end{verbatim}")
 
-        # return x
-
-    def predict(self, X):
-        print('Making predictions with binary classification model...')
-        self.eval()
-        X_as_tensor = torch.from_numpy(X.astype('float64'))
-        X_as_tensor = torch.permute(X_as_tensor, (0, 2, 1))
-        with torch.no_grad():
-            y_pred = self(X_as_tensor.float())
-            y_pred = y_pred.detach().cpu().numpy()
-        return y_pred
 
     def evaluate(self, X_test, y_test):
         print('Evaluating binary classification model...')
         self.eval()
 
-        print(f"y_test:\n {y_test}")
-        
+        assert np.all(np.logical_or(y_test == 0, y_test == 1))
+
         X_test_as_tensor = torch.from_numpy(X_test.astype('float64'))
         X_test_as_tensor = torch.permute(X_test_as_tensor, (0, 2, 1))
         y_test_as_tensor = torch.from_numpy(y_test.astype('float64'))
@@ -280,11 +287,10 @@ class BinaryClassificationNet(RainfallClassificationBase):
                     y_pred = np.vstack([y_pred, yb_pred])
 
         y_pred = y_pred.round().ravel()
+        assert np.all(np.logical_or(y_pred == 0, y_pred == 1))
         y_test = y_test.ravel()
-        print(f"y_pred:\n {y_pred}")
-        print(f"y_test:\n {y_test}")
 
-        export_confusion_matrix_to_latex(y_test, y_pred, rp.PredictionTask.BINARY_CLASSIFICATION)
+        return y_pred
 
     def fit(self, n_epochs, optimizer, train_loader, val_loader, patience, criterion, pipeline_id):
         # to track the training loss as the model trains
