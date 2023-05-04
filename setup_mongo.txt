@@ -1,0 +1,4 @@
+Baixar node.js  https://nodejs.org/en/download
+npm install
+
+node app.js

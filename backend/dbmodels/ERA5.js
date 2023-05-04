@@ -1,7 +1,7 @@
 const mongoose = require('mongoose')
 const Schema = mongoose.Schema
 
-const normalize = require('normalize-mongoose');
+//const normalize = require('normalize-mongoose');
 
 const era5Schema = new Schema ({
     geopotential: {
@@ -56,7 +56,7 @@ const era5Schema = new Schema ({
     }
 })
 
-ERA5.plugin(normalize);
+//ERA5.plugin(normalize);
 
 const ERA5 = mongoose.model('ERA5', era5Schema)
 
