@@ -6,6 +6,7 @@ from pathlib import Path
 import xarray as xr
 import argparse
 import sys
+from enum import Enum
 
 """
     For using the CDS API to download ERA-5 data consult: https://cds.climate.copernicus.eu/api-how-to
@@ -13,6 +14,20 @@ import sys
 
 # North -22°, West -44°, South -23°, East -42°
 REGION_OF_INTEREST = [-22, -44, -23, -42]
+
+class Months(Enum):
+    JANUARY = 1
+    FEBRUARY = 2
+    MARCH = 3
+    APRIL = 4
+    MAY = 5
+    JUNE = 6
+    JULY = 7
+    AUGUST = 8
+    SEPTEMBER = 9
+    OCTOBER = 10
+    NOVEMBER = 11
+    DECEMBER = 12
 
 def get_data(start_year, end_year):
 
@@ -22,7 +37,7 @@ def get_data(start_year, end_year):
 
     file_exist = Path("../data/NWP/ERA5/" + file + ".nc")
 
-    months = range(1, 12+1)
+    months = range(Months.JANUARY.value, Months.DECEMBER.value+1)
 
     if file_exist.is_file():
         ds = xr.open_dataset("../data/NWP/ERA5/" + file + ".nc")
