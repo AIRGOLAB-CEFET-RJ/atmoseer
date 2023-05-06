@@ -8,7 +8,7 @@ const app = express();
 
 var era5Router = require('./routes/Era5');
 var soundingRouter = require('./routes/Sounding');
-var wsRouter = require('./routes/Ws_cor');
+var wsRouter = require('./routes/WeatherStation');
 
 //Creating database
 mongoose.connect(mongoURI)
@@ -20,7 +20,7 @@ db.once('open', function() {
 
    // app.use('/ERA5', era5Router );
     app.use('/sounding', soundingRouter);
-   // app.use('/ws_cor', wsRouter);
+   // app.use('/weatherstation', wsRouter);
 
 });
 
