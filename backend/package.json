@@ -11,6 +11,7 @@
   "dependencies": {
     "cheerio": "^1.0.0-rc.12",
     "express": "^4.18.2",
-    "mongoose": "^7.0.5"
+    "mongoose": "^7.0.5",
+    "netcdfjs": "^2.0.2"
   }
 }
