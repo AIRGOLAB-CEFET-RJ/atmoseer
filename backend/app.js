@@ -18,8 +18,8 @@ db.once('open', function() {
     
    // app.use(express.static(path.join(__dirname, 'public')));
 
-   // app.use('/ERA5', era5Router );
-    app.use('/sounding', soundingRouter);
+   app.use('/ERA5', era5Router );
+   app.use('/sounding', soundingRouter);
    // app.use('/weatherstation', wsRouter);
 
 });
