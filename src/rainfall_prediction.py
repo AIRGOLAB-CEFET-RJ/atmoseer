@@ -54,7 +54,7 @@ def onehotencoding_to_binarylabels(one_hot_array):
         binary_labels.append(np.argmax(row))
     return binary_labels
 
-def ordinalencoding_to_multiclasslabels(pred: np.ndarray):
+def ordinalencoding_to_labels(pred: np.ndarray):
     """
     Convert ordinal predictions to class labels, e.g.
 
@@ -80,18 +80,10 @@ def ordinalencoding_to_multiclasslabels(pred: np.ndarray):
 
 #     return one_hot_encoded_y
 
-def precipitationvalues_to_binary_encoding(y):
-    return map_to_binary_precipitation_levels(y)
+# def precipitationvalues_to_binary_encoding(y):
+#     return map_to_binary_precipitation_levels(y)
 
 def precipitationvalues_to_ordinalencoding(y):
-    # none, weak, moderate, strong, extreme = get_events_per_precipitation_level(y)
-    # y_class = np.zeros_like(y)
-    # y_class[none] = RainfallLevel.NONE
-    # y_class[weak] = RainfallLevel.WEAK
-    # y_class[moderate] = RainfallLevel.MODERATE
-    # y_class[strong] = RainfallLevel.STRONG
-    # y_class[extreme] = RainfallLevel.EXTREME
-
     y_levels = map_to_precipitation_levels(y)
     y = np.array(list(map(ordinal_encoding, y_levels)))
     return y

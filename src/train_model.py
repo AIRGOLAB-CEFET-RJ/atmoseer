@@ -16,6 +16,8 @@ from train.training_utils import create_train_and_val_loaders, DeviceDataLoader,
 
 import rainfall_prediction as rp
 
+import logging
+
 # TODO: really compute the weights!
 def compute_weights_for_binary_classification(y):
     print(y.shape)
@@ -107,14 +109,6 @@ class WeightedBCELoss(torch.nn.Module):
         
     #     return loss.mean()
 
-hyper_params_dics_bc = {
-    "N_EPOCHS" : 3500,
-    "PATIENCE" : 1000,
-    "BATCH_SIZE" : 1024,
-    "WEIGHT_DECAY" : 1e-6,
-    "LEARNING_RATE" : .3e-3
-}
-
 def train(X_train, y_train, X_val, y_val, prediction_task_id, pipeline_id):
     NUM_FEATURES = X_train.shape[2]
     print(f"Input dimensions of the data matrix: {NUM_FEATURES}")
@@ -147,29 +141,32 @@ def train(X_train, y_train, X_val, y_val, prediction_task_id, pipeline_id):
         train_weights = None
         val_weights = None
         
-        N_EPOCHS = hyper_params_dics_bc["N_EPOCHS"]
-        PATIENCE = hyper_params_dics_bc["PATIENCE"]
-        BATCH_SIZE = hyper_params_dics_bc["BATCH_SIZE"]
-        WEIGHT_DECAY = hyper_params_dics_bc["WEIGHT_DECAY"]
-        LEARNING_RATE = hyper_params_dics_bc["LEARNING_RATE"]
+        N_EPOCHS = globals.hyper_params_dict_bc["N_EPOCHS"]
+        PATIENCE = globals.hyper_params_dict_bc["PATIENCE"]
+        BATCH_SIZE = globals.hyper_params_dict_bc["BATCH_SIZE"]
+        WEIGHT_DECAY = globals.hyper_params_dict_bc["WEIGHT_DECAY"]
+        LEARNING_RATE = globals.hyper_params_dict_bc["LEARNING_RATE"]
+        DROPOUT_RATE = globals.hyper_params_dict_bc["DROPOUT_RATE"]
 
         # weights = torch.FloatTensor([1.0, 5.0]) 
         loss = nn.BCELoss()
         # loss = WeightedBCELoss(pos_weight=2, neg_weight=1)
 
-        input_dim = (NUM_FEATURES, globals.TIME_WINDOW_SIZE)
-        model = BinaryClassificationNet(in_channels=NUM_FEATURES, input_dim=input_dim)
+        input_dim = (NUM_FEATURES, globals.hyper_params_dict_bc["SLIDING_WINDOW_SIZE"])
+        model = BinaryClassificationNet(in_channels = NUM_FEATURES, input_dim = input_dim, dropout_rate = DROPOUT_RATE)
 
         print(f"(BEFORE) min/max of y_train: {min(y_train)}/{max(y_train)}")
         print(f"(BEFORE) min/max of y_val: {min(y_val)}/{max(y_val)}")
         print(f"(BEFORE) unique of y_train: {np.unique(y_train)}")
         print(f"(BEFORE) unique of y_val: {np.unique(y_val)}")
-        # y_train = rp.precipitationvalues_to_binary_encoding(y_train)
-        # y_val = rp.precipitationvalues_to_binary_encoding(y_val)
-        # print(f"(AFTER) min/max of y_train: {min(y_train)}/{max(y_train)}")
-        # print(f"(AFTER) min/max of y_val: {min(y_val)}/{max(y_val)}")
-        # print(f"(AFTER) unique of y_train: {np.unique(y_train)}")
-        # print(f"(AFTER) unique of y_val: {np.unique(y_val)}")
+        
+        y_train = rp.map_to_binary_precipitation_levels(y_train)
+        y_val = rp.map_to_binary_precipitation_levels(y_val)
+
+        print(f"(AFTER) min/max of y_train: {min(y_train)}/{max(y_train)}")
+        print(f"(AFTER) min/max of y_val: {min(y_val)}/{max(y_val)}")
+        print(f"(AFTER) unique of y_train: {np.unique(y_train)}")
+        print(f"(AFTER) unique of y_val: {np.unique(y_val)}")
         
         print(f"- Shapes of (train/val) arrays: {y_train.shape}/{y_val.shape}")
     elif prediction_task_id == rp.PredictionTask.REGRESSION:
@@ -241,19 +238,17 @@ def main(argv):
     if prediction_task_id is None:
         prediction_task_id = rp.PredictionTask.REGRESSION
 
-    start_time = time.time()
-
     seed_everything()
 
     #
     # Load numpy arrays (stored in a pickle file) from disk
     filename = globals.DATASETS_DIR + pipeline_id + ".pickle"
-    print(f"Loading train/val/test datasets from {filename}.")
+    logging.info(f"Loading train/val/test datasets from {filename}.")
     file = open(filename, 'rb')
     (X_train, y_train, X_val, y_val, X_test, y_test) = pickle.load(file)
-    print(f"Shapes of train/val/test data matrices: {X_train.shape}/{X_val.shape}/{X_test.shape}")
-    print(f"Min values of train/val/test data matrices: {min(X_train.reshape(-1,1))}/{min(X_val.reshape(-1,1))}/{min(X_test.reshape(-1,1))}")
-    print(f"Max values of train/val/test data matrices: {max(X_train.reshape(-1,1))}/{max(X_val.reshape(-1,1))}/{max(X_test.reshape(-1,1))}")
+    logging.info(f"Shapes of train/val/test data matrices: {X_train.shape}/{X_val.shape}/{X_test.shape}")
+    logging.info(f"Min values of train/val/test data matrices: {min(X_train.reshape(-1,1))}/{min(X_val.reshape(-1,1))}/{min(X_test.reshape(-1,1))}")
+    logging.info(f"Max values of train/val/test data matrices: {max(X_train.reshape(-1,1))}/{max(X_val.reshape(-1,1))}/{max(X_test.reshape(-1,1))}")
 
     if prediction_task_id == rp.PredictionTask.ORDINAL_CLASSIFICATION:
         pipeline_id += "_OC" 
@@ -264,17 +259,13 @@ def main(argv):
 
     #
     # Build model
+    start_time = time.time()
     model = train(X_train, y_train, X_val, y_val, prediction_task_id, pipeline_id)
+    logging.info("Model training took %s seconds." % (time.time() - start_time))
 
     # 
-    # Load the best model
-    model.load_state_dict(torch.load('../models/best_' + pipeline_id + '.pt'))
-
-    y_test = rp.precipitationvalues_to_binary_encoding(y_test)
-
-    model.print_evaluation_report(pipeline_id, X_test, y_test, hyper_params_dics_bc)
-
-    print("--- %s seconds ---" % (time.time() - start_time))
+    # Evaluate using the best model produced
+    model.print_evaluation_report(pipeline_id, X_test, y_test, globals.hyper_params_dict_bc)
 
 
 if __name__ == "__main__":

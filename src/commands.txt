@@ -16,16 +16,22 @@ python preprocess_ws.py -s A602
 python preprocess_ws.py -s A636
 python preprocess_ws.py -s A627
 
-python build_datasets.py -s A627 -d N
+python build_datasets.py -s A621 -d R
+python build_datasets.py -s A621 -d N
 python build_datasets.py -s A602 -d N
 python build_datasets.py -s A652 -d N
-python build_datasets.py -s A652 -d R
-python build_datasets.py -s A652 -d R+N
+python build_datasets.py -s A652 -d R -sp NEGATIVE
+python build_datasets.py -s A652 -d R+N -sp NEGATIVE
 
 python augment_datasets.py -s A652 -p A652_N -i A621
 python augment_datasets.py -s A652 -p A652_N -i A602
 python augment_datasets.py -s A652 -p A652_N -i A621 A602
 python augment_datasets.py -s A652 -p A652_N -i A621 A636 A627
+python augment_datasets.py -s A652 -p A652_R -i A621 A636 A627
+
+python train_model.py -p A652_R -t ORDINAL_CLASSIFICATION
+python train_model.py -p A652_R -t BINARY_CLASSIFICATION
+python train_model.py -p A652_N_R -t BINARY_CLASSIFICATION
 
 python train_model.py -p A652_N -t ORDINAL_CLASSIFICATION
 python train_model.py -p A652_N -t BINARY_CLASSIFICATION
@@ -33,3 +39,4 @@ python train_model.py -p A652_N_A621 -t BINARY_CLASSIFICATION
 python train_model.py -p A652_N_A602 -t BINARY_CLASSIFICATION
 python train_model.py -p A652_N_A621_A602 -t BINARY_CLASSIFICATION
 python train_model.py -p A652_N_A621_A636_A627 -t BINARY_CLASSIFICATION
+python train_model.py -p A652_R_A621_A636_A627 -t BINARY_CLASSIFICATION

@@ -172,16 +172,16 @@ import pprint
 #         return avg_train_losses, avg_valid_losses
 
 class BinaryClassificationNet(RainfallClassificationBase):
-    def __init__(self, in_channels, input_dim):
+    def __init__(self, in_channels, input_dim, dropout_rate=0.5):
 
         super(BinaryClassificationNet, self).__init__()
 
         self.feature_extractor = nn.Sequential(
             nn.Conv1d(in_channels=in_channels, out_channels=16, kernel_size=3, padding=3),
             nn.ReLU(inplace=True),
-            nn.Dropout1d(p=0.5),
+            nn.Dropout1d(p=dropout_rate),
 
-            # nn.Conv1d(in_channels=32, out_channels=64, kernel_size=3, padding=3),
+            # nn.Conv1d(in_channels=16, out_channels=32, kernel_size=3, padding=3),
             # nn.ReLU(inplace=True),
             # nn.Dropout1d(p=0.5),
 
@@ -234,6 +234,9 @@ class BinaryClassificationNet(RainfallClassificationBase):
     #     return y_pred
 
     def print_evaluation_report(self, pipeline_id, X_test, y_test, hyper_params_dics):
+        self.load_state_dict(torch.load('../models/best_' + pipeline_id + '.pt'))
+        y_test = rp.map_to_binary_precipitation_levels(y_test)
+        
         print("\\begin{verbatim}")
         print(f"***Evaluation report for pipeline {pipeline_id}***")
         print("\\end{verbatim}")

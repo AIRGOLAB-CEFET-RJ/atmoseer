@@ -1,5 +1,6 @@
 from sklearn.ensemble import GradientBoostingClassifier
 import numpy as np 
+import logging
 
 NAIVE_SUBSAMPLING_KEEP_RATIO = 0.05
 
@@ -18,9 +19,9 @@ def apply_naive_subsampling(X, y):
     """
     y_eq_zero_idxs = np.where(y == 0)[0]
     y_gt_zero_idxs = np.where(y > 0)[0]
-    print(f' - Original sizes (target=0)/(target>0): ({y_eq_zero_idxs.shape[0]})/({y_gt_zero_idxs.shape[0]})')
+    logging.info(f' - Original sizes (target=0)/(target>0): ({y_eq_zero_idxs.shape[0]})/({y_gt_zero_idxs.shape[0]})')
 
-    print(f" - Using keep ratio = {NAIVE_SUBSAMPLING_KEEP_RATIO}.")
+    logging.info(f" - Using keep ratio = {NAIVE_SUBSAMPLING_KEEP_RATIO}.")
 
     # Setting numpy seed value
     np.random.seed(0)
@@ -29,15 +30,15 @@ def apply_naive_subsampling(X, y):
                             NAIVE_SUBSAMPLING_KEEP_RATIO, 1.0-NAIVE_SUBSAMPLING_KEEP_RATIO])
     y_train_subsample_idxs = np.where(mask == True)[0]
 
-    print(f" - Subsample (total) size: {y_train_subsample_idxs.shape[0]}")
+    logging.info(f" - Subsample (total) size: {y_train_subsample_idxs.shape[0]}")
     idxs = np.intersect1d(y_eq_zero_idxs, y_train_subsample_idxs)
-    print(f" - Subsample (target=0) size: {idxs.shape[0]}")
+    logging.info(f" - Subsample (target=0) size: {idxs.shape[0]}")
 
     idxs = np.union1d(idxs, y_gt_zero_idxs)
     X, y = X[idxs], y[idxs]
     y_eq_zero_idxs = np.where(y == 0)[0]
     y_gt_zero_idxs = np.where(y > 0)[0]
-    print(f' - Resulting sizes (target=0)/(target>0): ({y_eq_zero_idxs.shape[0]})/({y_gt_zero_idxs.shape[0]})')
+    logging.info(f' - Resulting sizes (target=0)/(target>0): ({y_eq_zero_idxs.shape[0]})/({y_gt_zero_idxs.shape[0]})')
 
     return X, y
 
@@ -45,26 +46,29 @@ def apply_negative_subsampling(X_train, y_train):
     original_shape_X_train = X_train.shape
     
     X_train = X_train.reshape(len(X_train), -1)
-    y_train[y_train>0] = 1    
+    y_train_binarized = np.copy(y_train)
+    y_train_binarized[y_train_binarized>0] = 1    
     
+    positive_indices = np.where(y_train_binarized == 1)[0]
+
+    print("num examples in X_train:", len(X_train))
+    print("num pos in X_train:", len(positive_indices))
+
     ###
     # Apply the steps of the negative sampling procedure
     ###
 
     # Step 1: Train "pilot" model
-    clf, X_balanced, y_balanced = train_pilot_model(X_train, y_train)
+    clf = train_pilot_model(X_train, y_train_binarized)
 
     # Step 2: Score the negative examples with the pilot model
-    y_proba_normalized = score_negative_examples(clf, X_balanced, y_balanced)
+    y_proba_normalized = score_negative_examples(clf, X_train, y_train_binarized)
 
-    # Step 3: Sample the negative examples proportionally to the scores
-    X_sampled_negative = sample_from_negative_examples(X_balanced, y_balanced, y_proba_normalized)
+    # Step 3: Sample the negative examples proportionally to their scores
+    negative_indices = sample_from_negative_examples(X_train, y_train_binarized, y_proba_normalized)
     
-    positive_examples = X_balanced[y_balanced==1]
-    desired_num_examples = len(positive_examples)
-    X_train_sampled = np.concatenate((positive_examples, X_sampled_negative))
-    y_train_sampled = np.concatenate((np.ones(desired_num_examples), np.zeros(desired_num_examples)))
-    X_train_sampled.shape, y_train_sampled.shape
+    X_train_sampled = np.concatenate((X_train[positive_indices], X_train[negative_indices]))
+    y_train_sampled = np.concatenate((y_train[positive_indices], y_train[negative_indices]))
     
     X_train_sampled = X_train_sampled.reshape((len(X_train_sampled), original_shape_X_train[1], original_shape_X_train[2]))
     y_train_sampled = y_train_sampled.reshape(-1, 1)
@@ -72,40 +76,50 @@ def apply_negative_subsampling(X_train, y_train):
     return X_train_sampled, y_train_sampled
 
 def train_pilot_model(X_train, y_train):
+    '''
+    Train the pilot model on a balanced dataset. This balanced dataset is built in 
+    such a way that it has equal amounts of positive and negative examples. If there 
+    are P positive examples in the original training set, then P negative
+    examples will be uniformly sampled from it to put into the balanced dataset. All 
+    the positive examples in the original dataset are put in the balanced dataset.
+    '''
     y_eq_zero_idxs = np.where(y_train == 0)[0]
     y_gt_zero_idxs = np.where(y_train > 0)[0]
-    print(f"Amounts of neg/pos examples: {len(y_eq_zero_idxs)}/{len(y_gt_zero_idxs)}")
+    logging.info(f"Amounts of neg/pos examples: {len(y_eq_zero_idxs)}/{len(y_gt_zero_idxs)}")
 
-    positive_examples = X_train[y_gt_zero_idxs]
-    negative_examples = X_train[y_eq_zero_idxs]
+    X_train_positives = X_train[y_gt_zero_idxs]
+    X_train_negatives = X_train[y_eq_zero_idxs]
 
-    num_positive_examples = len(positive_examples)
-    num_negative_examples = len(negative_examples)
-    desired_num_examples = min(num_positive_examples, num_negative_examples)
-    print(desired_num_examples)
+    num_positive_examples = len(X_train_positives)
+    num_negative_examples = len(X_train_negatives)
 
-    positive_indices = np.random.choice(num_positive_examples, size=desired_num_examples, replace=False)
-    negative_indices = np.random.choice(num_negative_examples, size=desired_num_examples, replace=False)
+    assert num_positive_examples < num_negative_examples
 
-    X_train_equalized = np.concatenate((positive_examples[positive_indices], negative_examples[negative_indices]))
-    y_train_equalized = np.concatenate((np.ones(desired_num_examples), np.zeros(desired_num_examples)))
+    num_negative_examples_to_sample = min(num_positive_examples, num_negative_examples)
 
-    assert len(y_train_equalized) == 2*desired_num_examples
+    positive_indices = np.random.choice(num_positive_examples, size=num_negative_examples_to_sample, replace=False)
+    negative_indices = np.random.choice(num_negative_examples, size=num_negative_examples_to_sample, replace=False)
+
+    X_train_balanced = np.concatenate((X_train_positives[positive_indices], X_train_negatives[negative_indices]))
+    y_train_balanced = np.concatenate((np.ones(num_negative_examples_to_sample), np.zeros(num_negative_examples_to_sample)))
+
+    assert len(y_train_balanced) == 2*num_negative_examples_to_sample
 
     # Create a GradientBoostingClassifier object with default hyperparameters
     clf = GradientBoostingClassifier()
 
-    # Train the classifier on the equalized training dataset
-    clf.fit(X_train_equalized, y_train_equalized)
+    # Train the classifier on the balanced training dataset
+    clf.fit(X_train_balanced, y_train_balanced)
     
-    return clf, X_train_equalized, y_train_equalized
+    return clf
 
-def score_negative_examples(clf, X_balanced, y_balanced):
-    X_balanced_negative = X_balanced[y_balanced==0]
-    y_balanced_negative = y_balanced[y_balanced==0]
+def score_negative_examples(clf, X_train, y_train):
+    y_eq_zero_idxs = np.where(y_train == 0)[0]
+    X_train_negatives = X_train[y_eq_zero_idxs]
+    y_train_negatives = y_train[y_eq_zero_idxs]
 
     # Get predicted probabilities on the negative samples
-    y_proba = clf.predict_proba(X_balanced_negative)
+    y_proba = clf.predict_proba(X_train_negatives)
 
     # The predicted probabilities for the negative class (class 0) are in the first column
     y_proba_negative = y_proba[:, 0]
@@ -113,23 +127,20 @@ def score_negative_examples(clf, X_balanced, y_balanced):
     # Normalize the probabilities to sum to 1
     y_proba_normalized = y_proba_negative / np.sum(y_proba_negative)
 
-    print(f"Normalized scores for the first 5 negative examples: {y_proba_normalized[:5]}")
-    print(f"Correct labels for the first 5 negative examples: {y_balanced_negative[:5]}")
+    N = 5
+    logging.info(f"Normalized scores for the first {N} negative examples: {y_proba_normalized[:N]}")
+    logging.info(f"Correct labels for the first {N} negative examples: {y_train_negatives[:N]}")
     
     return y_proba_normalized
 
-def sample_from_negative_examples(X_balanced, y_balanced, y_proba_normalized):
-    # Create an array of indices corresponding to X_balanced_negative
-    X_balanced_negative = X_balanced[y_balanced==0]
-    indices = np.arange(len(X_balanced_negative))
-
-    positive_examples = X_balanced[y_balanced==1]
+def sample_from_negative_examples(X_train, y_train, y_proba_normalized):
+    y_eq_zero_idxs = np.where(y_train == 0)[0]
+    y_gt_zero_idxs = np.where(y_train > 0)[0]
+    
+    positive_examples = X_train[y_gt_zero_idxs]
     num_positive_examples = len(positive_examples)
 
     # Sample the indices using the normalized probabilities
-    sampled_indices = np.random.choice(indices, size=num_positive_examples, replace=False, p=y_proba_normalized)
+    negative_sampled_idxs = np.random.choice(y_eq_zero_idxs, size=num_positive_examples, replace=False, p=y_proba_normalized)
 
-    # Use the sampled indices to get a subset "hard" negative examples
-    X_sampled_negative = X_balanced_negative[sampled_indices]
-
-    return X_sampled_negative
+    return negative_sampled_idxs
