@@ -2,7 +2,6 @@ import pandas as pd
 from metpy.units import units
 import metpy.calc as mpcalc
 import argparse
-import sys
 
 def compute_indices(df_launch):
     df_launch_cleaned = df_launch.drop_duplicates(subset='pressure', ignore_index=True)
@@ -11,18 +10,17 @@ def compute_indices(df_launch):
 
     df_launch_cleaned = df_launch_cleaned.sort_values('pressure', ascending=False)
         
-    pressure_values = df_launch_cleaned['pressure'].to_numpy() * units.hPa
-    temperature_values = df_launch_cleaned['temperature'].to_numpy() * units.degC
-    dewpoint_values = df_launch_cleaned['dewpoint'].to_numpy() * units.degC
+    pressure_values = df_launch_cleaned['pressure'].to_list() * units.hPa
+    temperature_values = df_launch_cleaned['temperature'].to_list() * units.degC
+    dewpoint_values = df_launch_cleaned['dewpoint'].to_list() * units.degC
 
     parcel_profile = mpcalc.parcel_profile(pressure_values, 
-                                           df_launch_cleaned['temperature'][0] * units.degC, 
-                                           df_launch_cleaned['dewpoint'][0] * units.degC)
-    parcel_profile =  parcel_profile.magnitude * units.degC
+                                           temperature_values[0], 
+                                           dewpoint_values[0]).to('degC')
 
     indices = dict()
 
-    CAPE = mpcalc.cape_cin(pressure_values, temperature_values, dewpoint_values, parcel_profile, which_lfc = "top", which_el = "top")
+    CAPE = mpcalc.cape_cin(pressure_values, temperature_values, dewpoint_values, parcel_profile)#, which_lfc = "top", which_el = "top")
     indices['cape'] = CAPE[0].magnitude
     indices['cin'] = CAPE[1].magnitude
 
@@ -40,10 +38,6 @@ def compute_indices(df_launch):
 
     return indices
 
-'''
-    Usage example:
-    python gen_sounding_indices.py --input_file ../data/sounding/SBGL_1997_2023.parquet.gzip --output_file ../data/sounding/SBGL_indices_1997_2023.parquet.gzip
-'''
 def main():
     parser = argparse.ArgumentParser(description='Generate instability indices from sounding measurements.')
     parser.add_argument('--input_file', help='input Parquet file name containing the sounding measurements', required=True)

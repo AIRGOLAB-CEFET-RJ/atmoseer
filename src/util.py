@@ -7,6 +7,41 @@ import numpy as np
 import pandas as pd
 from globals import *
 from math import radians, sin, cos, sqrt, atan2
+import logging
+
+import pandas as pd
+
+import pandas as pd
+
+def add_missing_indicator_column(df: pd.DataFrame, indicator_col_name: str):
+    """
+    Add a new column to the given Pandas dataframe with value 1 for rows that have null values 
+    and 0 for rows that do not have null values.
+    
+    Parameters:
+    -----------
+    df : pandas.DataFrame
+        The dataframe to which the new indicator column is to be added.
+    indicator_col_name : str
+        The name of the new indicator column to be added.
+    
+    Returns:
+    --------
+    pandas.DataFrame
+        The modified dataframe with the new indicator column.
+    """
+    
+    # Create a new column with default value 0
+    df[indicator_col_name] = 0
+    
+    # Check if any null value is present in each row
+    has_null = df.isnull().any(axis=1)
+    
+    # Set the value of the missing indicator column to 1 for the rows that have null values
+    df.loc[has_null, indicator_col_name] = 1
+    
+    return df
+
 
 def haversine_distance(point1, point2):
     """

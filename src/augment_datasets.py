@@ -59,7 +59,7 @@ def main(argv):
     merged_X_test = X_test
     merged_y_test = y_test
     
-    df_stations = pd.read_csv("../data/ws/INMET_WS_Stations.csv")
+    df_stations = pd.read_csv("../data/ws/WeatherStations.csv")
     row = df_stations[df_stations["STATION_ID"] == soi_id].iloc[0]
     soi_lat_long = (row["VL_LATITUDE"], row["VL_LONGITUDE"])
 
