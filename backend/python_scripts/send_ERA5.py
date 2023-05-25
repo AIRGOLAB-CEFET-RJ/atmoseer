@@ -18,7 +18,7 @@ def saveDataToMongoDB(data):
 
     # Inserir os dados no MongoDB
     collection.insert_many(data)
-    print('Dados inseridos com sucesso no MongoDB:')
+    print('Dados inseridos com sucesso no MongoDB')
 
     # Fechar a conexão com o MongoDB
     client.close()
