@@ -1,6 +1,7 @@
 import numpy as np
 from enum import Enum
 from sklearn.preprocessing import OneHotEncoder
+import math
 
 class ExtendedEnum(Enum):
     @classmethod
@@ -89,13 +90,28 @@ def precipitationvalues_to_ordinalencoding(y):
     return y
 
 
+binary_classification_thresholds_dict = {
+    "NO_RAIN": (0.0, 0.0), 
+    "RAIN": (0.4, math.inf)
+}
+
+# see http://alertario.rio.rj.gov.br/previsao-do-tempo/termosmet/
+multiclass_classification_thresholds_dict = {
+    "NO_RAIN": (0.0, 0.0), 
+    "WEAK_RAIN": (0.0, 5.0),
+    "MODERATE_RAIN": (5.0, 25.0),
+    "STRONG_RAIN": (25.0, 50.0),
+    "EXTREME_RAIN": (50.0, math.inf)
+}
+
 def get_events_per_precipitation_level(y):
-    # see http://alertario.rio.rj.gov.br/previsao-do-tempo/termosmet/
-    no_rain = np.where(np.any(y <= 0., axis=1))
-    weak_rain = np.where(np.any((y > 0.) & (y <= 5.), axis=1))
-    moderate_rain = np.where(np.any((y > 5.) & (y <= 25.), axis=1))
-    strong_rain = np.where(np.any((y > 25.) & (y <= 50.), axis=1))
-    extreme_rain = np.where(np.any(y > 50., axis=1))
+    assert np.all((y >= 0)) # We can't have negative precipitation values...right!?
+    thresholds = multiclass_classification_thresholds_dict
+    no_rain = np.where(np.any(y <= thresholds["NO_RAIN"][1], axis=1))
+    weak_rain = np.where(np.any((y > thresholds["WEAK_RAIN"][0]) & (y <= thresholds["WEAK_RAIN"][1]), axis=1))
+    moderate_rain = np.where(np.any((y > thresholds["MODERATE_RAIN"][0]) & (y <= thresholds["MODERATE_RAIN"][1]), axis=1))
+    strong_rain = np.where(np.any((y > thresholds["STRONG_RAIN"][0]) & (y <= thresholds["STRONG_RAIN"][1]), axis=1))
+    extreme_rain = np.where(np.any(y > thresholds["EXTREME_RAIN"][0], axis=1))    
     return no_rain, weak_rain, moderate_rain, strong_rain, extreme_rain
 
 
