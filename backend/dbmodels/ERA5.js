@@ -4,53 +4,83 @@ const Schema = mongoose.Schema
 //const normalize = require('normalize-mongoose');
 
 const era5Schema = new Schema ({
-    geopotential: {
-        type: Number,
-        required: true,
-        default: 0
-    },
-    relative_humidity: {
-        type: Number,
-        required: true,
-        default: 0
-    },
-    temperature: {
-        type: Number,
-        required: true,
-        default: 0
-    },
-    u_component_of_wind: {
-        type: Number,
-        required: true,
-        default: 0
-    },
-    v_component_of_wind: {
-        type: Number,
-        required: true,
-        default: 0
-    },
-    pressure_level: {
-        type: Number,
-        required: true,
-        default: 0
-    },
-    year: {
-        type: Number,
-        required: true,
-        default: 0
-    },
-    month: {
-        type: Number,
-        required: true,
-        default: 0
-    },
-    day: {
-        type: Number,
-        required: true,
-        default: 0
-    },
     time: {
         type: Date,
+        required: true,
+        default: 0
+    },
+    Geopotential_200: {
+        type: Number,
+        required: true,
+        default: 0
+    },
+    Humidity_200: {
+        type: Number,
+        required: true,
+        default: 0
+    },
+    Temperature_200: {
+        type: Number,
+        required: true,
+        default: 0
+    },
+    WindU_200: {
+        type: Number,
+        required: true,
+        default: 0
+    },
+    WindV_200: {
+        type: Number,
+        required: true,
+        default: 0
+    },
+    Geopotential_700: {
+        type: Number,
+        required: true,
+        default: 0
+    },
+    Humidity_700: {
+        type: Number,
+        required: true,
+        default: 0
+    },
+    Temperature_700: {
+        type: Number,
+        required: true,
+        default: 0
+    },
+    WindU_700: {
+        type: Number,
+        required: true,
+        default: 0
+    },
+    WindV_700: {
+        type: Number,
+        required: true,
+        default: 0
+    },
+    Geopotential_1000: {
+        type: Number,
+        required: true,
+        default: 0
+    },
+    Humidity_1000: {
+        type: Number,
+        required: true,
+        default: 0
+    },
+    Temperature_1000: {
+        type: Number,
+        required: true,
+        default: 0
+    },
+    WindU_1000: {
+        type: Number,
+        required: true,
+        default: 0
+    },
+    WindV_1000: {
+        type: Number,
         required: true,
         default: 0
     }

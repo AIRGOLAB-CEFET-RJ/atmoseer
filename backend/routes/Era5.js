@@ -1,6 +1,6 @@
 var express = require('express')
 var router = express.Router()
-const Era5 = require('../dbmodels/era5');
+const Era5 = require('../dbmodels/ERA5');
 const { spawn } = require('child_process')
 const fs = require("fs")
 //const { netcdf } = require("netcdjs")
