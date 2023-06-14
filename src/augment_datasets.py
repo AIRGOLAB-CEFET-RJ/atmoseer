@@ -97,12 +97,15 @@ def main(argv):
             merged_X_val = np.concatenate((merged_X_val, X_val))
             merged_y_val = np.concatenate((merged_y_val, y_val))
 
-            print(f'Number of posisitve examples (train/val): {len(X_train)}/{len(X_val)}.')
+            print(f'Number of positive examples (train/val): {len(X_train)}/{len(X_val)}.')
         else:
             merged_X_train = np.concatenate((merged_X_train, X_train))
             merged_y_train = np.concatenate((merged_y_train, y_train))
-            merged_X_val = np.concatenate((merged_X_val, X_val))
-            merged_y_val = np.concatenate((merged_y_val, y_val))
+
+            merged_X_train = np.concatenate((merged_X_train, X_val))
+            merged_y_train = np.concatenate((merged_y_train, y_val))
+            # merged_X_val = np.concatenate((merged_X_val, X_val))
+            # merged_y_val = np.concatenate((merged_y_val, y_val))
 
         print()
 

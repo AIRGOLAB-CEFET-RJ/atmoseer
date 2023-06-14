@@ -3,8 +3,8 @@ import numpy as np
 from sklearn.metrics import confusion_matrix
 import pandas as pd
 import sklearn.metrics as skl
-from rainfall_prediction import get_events_per_precipitation_level, map_to_precipitation_levels
-import rainfall_prediction as rp
+from rainfall import get_events_per_level, value_to_level
+import rainfall as rp
 
 def accuracy(outputs, labels):
     _, preds = torch.max(outputs, dim=1)
@@ -41,10 +41,10 @@ def export_results_to_latex(y_true, y_pred):
 
     export_confusion_matrix_to_latex(y_true, y_pred)
 
-    no_rain_true, weak_rain_true, moderate_rain_true, strong_rain_true, extreme_rain_true = get_events_per_precipitation_level(
-        y_true)
-    no_rain_pred, weak_rain_pred, moderate_rain_pred, strong_rain_pred, extreme_rain_pred = get_events_per_precipitation_level(
-        y_pred)
+    print(y_true.shape)
+    print(y_true)
+    no_rain_true, weak_rain_true, moderate_rain_true, strong_rain_true, extreme_rain_true = get_events_per_level(y_true)
+    no_rain_pred, weak_rain_pred, moderate_rain_pred, strong_rain_pred, extreme_rain_pred = get_events_per_level(y_pred)
 
     if no_rain_pred[0].size > 0:
         mse_no_rain = skl.mean_absolute_error(

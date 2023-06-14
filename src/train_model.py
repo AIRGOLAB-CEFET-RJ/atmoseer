@@ -14,7 +14,7 @@ from train.binary_classification_net import BinaryClassificationNet
 from train.regression_net import RegressionNet
 from train.training_utils import create_train_and_val_loaders, DeviceDataLoader, to_device, gen_learning_curve, seed_everything
 
-import rainfall_prediction as rp
+import rainfall as rp
 
 import logging
 
@@ -116,25 +116,31 @@ def train(X_train, y_train, X_val, y_val, prediction_task_id, pipeline_id):
     # model.apply(initialize_weights)
 
     if prediction_task_id == rp.PredictionTask.ORDINAL_CLASSIFICATION:
-        N_EPOCHS = 3500
-        PATIENCE = 1000
-        BATCH_SIZE = 1024
-        WEIGHT_DECAY = 1e-6
+        N_EPOCHS = globals.hyper_params_dict_oc["N_EPOCHS"]
+        PATIENCE = globals.hyper_params_dict_oc["PATIENCE"]
+        BATCH_SIZE = globals.hyper_params_dict_oc["BATCH_SIZE"]
+        WEIGHT_DECAY = globals.hyper_params_dict_oc["WEIGHT_DECAY"]
+        LEARNING_RATE = globals.hyper_params_dict_oc["LEARNING_RATE"]
+        DROPOUT_RATE = globals.hyper_params_dict_oc["DROPOUT_RATE"]
+        
+        # WEIGHT_DECAY = 1e-6
         print("- Prediction task: ordinal classification.")
         train_weights = compute_weights_for_ordinal_classification(y_train)
         val_weights = compute_weights_for_ordinal_classification(y_val)
         train_weights = torch.FloatTensor(train_weights)
         val_weights = torch.FloatTensor(val_weights)
 
-        LEARNING_RATE = .3e-6
+        # LEARNING_RATE = .3e-5
         loss = weighted_mse_loss
         NUM_CLASSES = 5
 
         model = OrdinalClassificationNet(in_channels=NUM_FEATURES, num_classes=NUM_CLASSES)
 
         print(f" - Shape of y_train before encoding: {y_train.shape}")
-        y_train = rp.precipitationvalues_to_ordinalencoding(y_train)
-        y_val = rp.precipitationvalues_to_ordinalencoding(y_val)
+        y_train = rp.value_to_ordinal_encoding(y_train)
+        print(f"unique(y_train): {np.unique(y_train)}")
+        print(f"y_train.shape: {y_train.shape}")
+        y_val = rp.value_to_ordinal_encoding(y_val)
         print(f" - Shape of y_train after encoding: {y_train.shape}")
     elif prediction_task_id == rp.PredictionTask.BINARY_CLASSIFICATION:
         print("- Prediction task: binary classification.")
@@ -160,8 +166,8 @@ def train(X_train, y_train, X_val, y_val, prediction_task_id, pipeline_id):
         print(f"(BEFORE) unique of y_train: {np.unique(y_train)}")
         print(f"(BEFORE) unique of y_val: {np.unique(y_val)}")
         
-        y_train = rp.map_to_binary_precipitation_levels(y_train)
-        y_val = rp.map_to_binary_precipitation_levels(y_val)
+        y_train = rp.value_to_binary_level(y_train)
+        y_val = rp.value_to_binary_level(y_val)
 
         print(f"(AFTER) min/max of y_train: {min(y_train)}/{max(y_train)}")
         print(f"(AFTER) min/max of y_val: {min(y_val)}/{max(y_val)}")
@@ -252,20 +258,24 @@ def main(argv):
 
     if prediction_task_id == rp.PredictionTask.ORDINAL_CLASSIFICATION:
         pipeline_id += "_OC" 
+        hyper_params_dict = globals.hyper_params_dict_oc
     if prediction_task_id == rp.PredictionTask.BINARY_CLASSIFICATION:
         pipeline_id += "_BC" 
+        hyper_params_dict = globals.hyper_params_dict_bc
     elif prediction_task_id == rp.PredictionTask.REGRESSION:
         pipeline_id += "_Reg"
+        hyper_params_dict = None
 
     #
     # Build model
     start_time = time.time()
+    print(f"unique(y_train)): {np.unique(y_train)}")
     model = train(X_train, y_train, X_val, y_val, prediction_task_id, pipeline_id)
     logging.info("Model training took %s seconds." % (time.time() - start_time))
 
     # 
     # Evaluate using the best model produced
-    model.print_evaluation_report(pipeline_id, X_test, y_test, globals.hyper_params_dict_bc)
+    model.print_evaluation_report(pipeline_id, X_test, y_test, hyper_params_dict)
 
 
 if __name__ == "__main__":

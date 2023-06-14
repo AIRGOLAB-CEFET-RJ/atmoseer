@@ -5,6 +5,7 @@ import numpy as np
 import os
 import random
 import matplotlib.pyplot as plt
+import globals as globals
 
 def initialize_weights(m):
     if isinstance(m, nn.Conv1d):
@@ -94,5 +95,5 @@ def gen_learning_curve(train_loss, val_loss, pipeline_id):
     plt.grid(True)
     plt.legend()
     plt.tight_layout()
-    fig.savefig('../models/loss_plot_' + pipeline_id +
+    fig.savefig(globals.MODELS_DIR + '/loss_plot_' + pipeline_id +
                 '.png', bbox_inches='tight')

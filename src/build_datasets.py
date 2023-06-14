@@ -12,7 +12,7 @@ from utils.windowing import apply_windowing
 import util as util
 import math
 import argparse
-import rainfall_prediction as rp
+import rainfall as rp
 from subsampling import apply_subsampling
 import xarray as xr
 import logging
@@ -82,7 +82,7 @@ def get_NWP_data_for_weather_station(station_id, initial_datetime, final_datetim
 
     logging.info(f"Selecting NWP data between {initial_datetime} and {final_datetime}.")
     
-    ds = xr.open_dataset("../data/NWP/ERA5.nc")
+    ds = xr.open_dataset(globals.NWP_DATA_DIR + "ERA5.nc")
     logging.info(f"Size.0: {ds.sizes['time']}")
 
     # Get the minimum and maximum values of the 'time' coordinate
@@ -182,11 +182,11 @@ def generate_windowed_split(train_df, val_df, test_df, target_name):
     return X_train, y_train, X_val, y_val, X_test, y_test
 
 
-def build_datasets(station_id: str, join_as_data_source: bool, join_nwp_data_source: bool, subsampling_procedure: str):
+def build_datasets(station_id: str, join_AS_data_source: bool, join_NWP_data_source: bool, subsampling_procedure: str):
     '''
     This function joins a set of datasources to build datasets. These resulting datasets are used to fit the parameters of
     precipitation models down the AtmoSeer pipeline. Each datasource contributes with a group of features to build the datasets 
-    that are going to be used for training and validating the predictions models.
+    that are going to be used for training and validating the prediction models.
     
     Notice that, when joining the user-specified data sources, there is always a station of interest, that is, a weather 
     station that will provide the values of the target variable (in our case, precipitation). It can even be the case that 
@@ -194,9 +194,9 @@ def build_datasets(station_id: str, join_as_data_source: bool, join_nwp_data_sou
     '''
 
     pipeline_id = station_id
-    if join_nwp_data_source:
+    if join_NWP_data_source:
         pipeline_id = pipeline_id + '_N'
-    if join_as_data_source:
+    if join_AS_data_source:
         pipeline_id = pipeline_id + '_R'
 
     logging.info(f"Loading observations for weather station {station_id}...")
@@ -223,7 +223,7 @@ def build_datasets(station_id: str, join_as_data_source: bool, join_nwp_data_sou
     min_datetime = min(joined_df.index)
     max_datetime = max(joined_df.index)
 
-    if join_nwp_data_source:
+    if join_NWP_data_source:
         logging.info(f"Loading NWP (ERA5) data near the weather station {station_id}...")
         df_nwp_era5 = get_NWP_data_for_weather_station(station_id, min_datetime, max_datetime)
         logging.info(f"Done! Shape = {df_nwp_era5.shape}.")
@@ -247,7 +247,7 @@ def build_datasets(station_id: str, join_as_data_source: bool, join_nwp_data_sou
 
     assert (not joined_df.isnull().values.any().any())
 
-    if join_as_data_source:
+    if join_AS_data_source:
         filename = AS_DATA_DIR + 'SBGL_indices_1997_2023.parquet.gzip'
         logging.info(f"Loading atmospheric sounding indices from {filename}...")
         df_as = pd.read_parquet(filename)
@@ -280,7 +280,7 @@ def build_datasets(station_id: str, join_as_data_source: bool, join_nwp_data_sou
         joined_df['total_totals'] = joined_df['total_totals'].interpolate(method='linear')
         joined_df['showalter'] = joined_df['showalter'].interpolate(method='linear')
         logging.info("Done!")
-        
+
         # At the beggining of the joined dataframe, a few entries may remain with NaN values. The code below
         # gets rid of these entries.
         # see https://stackoverflow.com/questions/27905295/how-to-replace-nans-by-preceding-or-next-values-in-pandas-dataframe

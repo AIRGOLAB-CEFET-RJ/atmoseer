@@ -6,7 +6,7 @@ from train.training_utils import *
 from train.evaluate import *
 from rainfall_classification_base import RainfallClassificationBase
 from train.early_stopping import *
-import rainfall_prediction as rp
+import rainfall as rp
 import functools
 import operator
 import pprint
@@ -235,7 +235,7 @@ class BinaryClassificationNet(RainfallClassificationBase):
 
     def print_evaluation_report(self, pipeline_id, X_test, y_test, hyper_params_dics):
         self.load_state_dict(torch.load('../models/best_' + pipeline_id + '.pt'))
-        y_test = rp.map_to_binary_precipitation_levels(y_test)
+        y_test = rp.value_to_binary_level(y_test)
         
         print("\\begin{verbatim}")
         print(f"***Evaluation report for pipeline {pipeline_id}***")

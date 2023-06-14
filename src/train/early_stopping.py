@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+import globals as globals
 
 class EarlyStopping:
     """Early stops the training if validation loss doesn't improve after a given patience."""
@@ -45,5 +46,5 @@ class EarlyStopping:
         if self.verbose:
             print(
                 f'Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}).  Saving model ...')
-        torch.save(model.state_dict(), '../models/best_' + pipeline_id + '.pt')
+        torch.save(model.state_dict(), globals.MODELS_DIR + '/best_' + pipeline_id + '.pt')
         self.val_loss_min = val_loss

@@ -7,6 +7,7 @@ import xarray as xr
 import argparse
 import sys
 from enum import Enum
+import globals as globals
 
 """
     For using the CDS API to download ERA-5 data consult: https://cds.climate.copernicus.eu/api-how-to
@@ -35,12 +36,12 @@ def get_data(start_year, end_year):
 
     file = "RJ_" + str(start_year) + "_" + str(end_year)
 
-    file_exist = Path("../data/NWP/ERA5/" + file + ".nc")
+    file_exist = Path(globals.NWP_DATA_DIR + "ERA5/" + file + ".nc")
 
     months = range(Months.JANUARY.value, Months.DECEMBER.value+1)
 
     if file_exist.is_file():
-        ds = xr.open_dataset("../data/NWP/ERA5/" + file + ".nc")
+        ds = xr.open_dataset(globals.NWP_DATA_DIR + "ERA5/" + file + ".nc")
     else:
         c = cdsapi.Client()
         years = list(map(str, range(int(start_year), int(end_year) + 1)))
@@ -130,7 +131,7 @@ def get_data(start_year, end_year):
                             ],
                             "area": REGION_OF_INTEREST,
                         },
-                        "../data/NWP/ERA5/RJ_" + year + "_" + str(month) + ".nc",
+                        globals.NWP_DATA_DIR + "ERA5/RJ_" + year + "_" + str(month) + ".nc",
                     )
                     print("Done!")
                 except Exception as e:
@@ -141,13 +142,13 @@ def get_data(start_year, end_year):
         for year in years:
             for month in months:
                 if ds is None:
-                    ds = xr.open_dataset("../data/NWP/ERA5/RJ_" + year + "_" + str(month) + ".nc")
+                    ds = xr.open_dataset(globals.NWP_DATA_DIR + "ERA5/RJ_" + year + "_" + str(month) + ".nc")
                 else:
-                    ds_aux = xr.open_dataset("../data/NWP/ERA5/RJ_" + year + "_" + str(month) + ".nc")
+                    ds_aux = xr.open_dataset(globals.NWP_DATA_DIR + "ERA5/RJ_" + year + "_" + str(month) + ".nc")
                     ds = ds.merge(ds_aux)
 
         print(f"Done!", end="")
-        filename = "../data/NWP/ERA5/" + file + ".nc"
+        filename = globals.NWP_DATA_DIR + "ERA5/" + file + ".nc"
         print(f"Saving dowloaded data to {filename}")
         ds.to_netcdf(filename)
 

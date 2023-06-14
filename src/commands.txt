@@ -1,44 +1,44 @@
-python retrieve_ws_inmet.py -s A652 -b 2007 -e 2023 --api_token <token>
-python retrieve_ws_inmet.py -s A621 -b 2007 -e 2023 --api_token <token>
-python retrieve_ws_inmet.py -s A627 -b 2018 -e 2023 --api_token <token>
-python retrieve_ws_inmet.py -s A636 -b 2017 -e 2023 --api_token <token>
+python src/retrieve_ws_inmet.py -s A652 -b 2007 -e 2023 --api_token <token>
+python src/retrieve_ws_inmet.py -s A621 -b 2007 -e 2023 --api_token <token>
+python src/retrieve_ws_inmet.py -s A627 -b 2018 -e 2023 --api_token <token>
+python src/retrieve_ws_inmet.py -s A636 -b 2017 -e 2023 --api_token <token>
 
-python retrieve_as.py --station_id SBGL --start_year 2023 --end_year 2023 
+python src/retrieve_as.py --station_id SBGL --start_year 2023 --end_year 2023 
 
-python retrieve_ERA5.py -b 2021 -e 2023 
-python retrieve_ERA5.py -b 2021 -e 2021 
+python src/retrieve_ERA5.py -b 2021 -e 2023 
+python src/retrieve_ERA5.py -b 2021 -e 2021 
 
-python gen_sounding_indices.py --input_file ../data/sounding/SBGL_1997_2023.parquet.gzip --output_file ../data/sounding/SBGL_indices_1997_2023.parquet.gzip
+python src/gen_sounding_indices.py --input_file ./data/sounding/SBGL_1997_2023.parquet.gzip --output_file ./data/sounding/SBGL_indices_1997_2023.parquet.gzip
 
-python preprocess_ws.py -s A652
-python preprocess_ws.py -s A621
-python preprocess_ws.py -s A602
-python preprocess_ws.py -s A636
-python preprocess_ws.py -s A627
+python src/preprocess_ws.py -s A652
+python src/preprocess_ws.py -s A621
+python src/preprocess_ws.py -s A602
+python src/preprocess_ws.py -s A636
+python src/preprocess_ws.py -s A627
 
-python build_datasets.py -s A621 -d R
-python build_datasets.py -s A621 -d N
-python build_datasets.py -s A602 -d N
-python build_datasets.py -s A652 -d N
-python build_datasets.py -s A652 -d R -sp NEGATIVE
-python build_datasets.py -s A652 -d R+N -sp NEGATIVE
+python src/build_datasets.py -s A621 -d R
+python src/build_datasets.py -s A621 -d N
+python src/build_datasets.py -s A602 -d N
+python src/build_datasets.py -s A652 -d N
+python src/build_datasets.py -s A652 -d R -sp NEGATIVE
+python src/build_datasets.py -s A652 -d R+N -sp NEGATIVE
 
-python augment_datasets.py -s A652 -p A652_R -i A621
+python src/augment_datasets.py -s A652 -p A652_R -i A621
 
-python augment_datasets.py -s A652 -p A652_N -i A621
-python augment_datasets.py -s A652 -p A652_N -i A602
-python augment_datasets.py -s A652 -p A652_N -i A621 A602
-python augment_datasets.py -s A652 -p A652_N -i A621 A636 A627
-python augment_datasets.py -s A652 -p A652_R -i A621 A636 A627
+python src/augment_datasets.py -s A652 -p A652_N -i A621
+python src/augment_datasets.py -s A652 -p A652_N -i A602
+python src/augment_datasets.py -s A652 -p A652_N -i A621 A602
+python src/augment_datasets.py -s A652 -p A652_N -i A621 A636 A627
+python src/augment_datasets.py -s A652 -p A652_R -i A621 A636 A627
 
-python train_model.py -p A652_R -t ORDINAL_CLASSIFICATION
-python train_model.py -p A652_R -t BINARY_CLASSIFICATION
-python train_model.py -p A652_N_R -t BINARY_CLASSIFICATION
+python src/train_model.py -p A652_R -t ORDINAL_CLASSIFICATION
+python src/train_model.py -p A652_R -t BINARY_CLASSIFICATION
+python src/train_model.py -p A652_N_R -t BINARY_CLASSIFICATION
 
-python train_model.py -p A652_N -t ORDINAL_CLASSIFICATION
-python train_model.py -p A652_N -t BINARY_CLASSIFICATION
-python train_model.py -p A652_N_A621 -t BINARY_CLASSIFICATION
-python train_model.py -p A652_N_A602 -t BINARY_CLASSIFICATION
-python train_model.py -p A652_N_A621_A602 -t BINARY_CLASSIFICATION
-python train_model.py -p A652_N_A621_A636_A627 -t BINARY_CLASSIFICATION
-python train_model.py -p A652_R_A621_A636_A627 -t BINARY_CLASSIFICATION
+python src/train_model.py -p A652_N -t ORDINAL_CLASSIFICATION
+python src/train_model.py -p A652_N -t BINARY_CLASSIFICATION
+python src/train_model.py -p A652_N_A621 -t BINARY_CLASSIFICATION
+python src/train_model.py -p A652_N_A602 -t BINARY_CLASSIFICATION
+python src/train_model.py -p A652_N_A621_A602 -t BINARY_CLASSIFICATION
+python src/train_model.py -p A652_N_A621_A636_A627 -t BINARY_CLASSIFICATION
+python src/train_model.py -p A652_R_A621_A636_A627 -t BINARY_CLASSIFICATION

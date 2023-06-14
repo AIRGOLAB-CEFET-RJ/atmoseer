@@ -22,11 +22,11 @@ from torch.utils.data import TensorDataset
 import torch.nn.functional as F
 from train.training_utils import *
 from train.evaluate import *
-from rainfall_prediction import ordinalencoding_to_labels
+from rainfall import ordinal_encoding_to_level
 from train.early_stopping import *
-import rainfall_prediction as rp
+import rainfall as rp
 import pprint
-
+import globals as globals
 
 class OrdinalClassificationNet(nn.Module):
     def __init__(self, in_channels, num_classes):
@@ -113,15 +113,14 @@ class OrdinalClassificationNet(nn.Module):
         print('Making predictions with ordinal classification model...')
         self.eval()
 
-        test_x_tensor = torch.from_numpy(X.astype('float64'))
-        test_x_tensor = torch.permute(test_x_tensor, (0, 2, 1))
+        X_as_tensor = torch.from_numpy(X.astype('float64'))
+        X_as_tensor = torch.permute(X_as_tensor, (0, 2, 1))
 
         outputs = []
         with torch.no_grad():
-            output = self(test_x_tensor.float())
+            output = self(X_as_tensor.float())
             yb_pred_encoded = output.detach().cpu().numpy()
-            yb_pred_decoded = ordinalencoding_to_labels(
-                yb_pred_encoded)
+            yb_pred_decoded = ordinal_encoding_to_level(yb_pred_encoded)
             outputs.append(yb_pred_decoded.reshape(-1, 1))
 
         y_pred = np.vstack(outputs)
@@ -147,7 +146,7 @@ class OrdinalClassificationNet(nn.Module):
             for xb, _ in test_loader:
                 output = self(xb.float())
                 yb_pred_encoded = output.detach().cpu().numpy()
-                yb_pred_decoded = ordinalencoding_to_labels(yb_pred_encoded)
+                yb_pred_decoded = ordinal_encoding_to_level(yb_pred_encoded)
                 outputs.append(yb_pred_decoded.reshape(-1, 1))
 
         y_pred = np.vstack(outputs)
@@ -155,8 +154,8 @@ class OrdinalClassificationNet(nn.Module):
         return y_pred
 
     def print_evaluation_report(self, pipeline_id, X_test, y_test, hyper_params_dics):
-        self.load_state_dict(torch.load('../models/best_' + pipeline_id + '.pt'))
-        y_test = rp.map_to_precipitation_levels(y_test)
+        self.load_state_dict(torch.load(globals.MODELS_DIR + '/best_' + pipeline_id + '.pt'))
+        y_test = rp.value_to_level(y_test)
 
         print("\\begin{verbatim}")
         print(f"***Evaluation report for pipeline {pipeline_id}***")
@@ -175,7 +174,17 @@ class OrdinalClassificationNet(nn.Module):
         print("\\begin{verbatim}")
         print('***Confusion matrix***')
         print("\\end{verbatim}")
+
+        print(f"y_test.shape: {y_test.shape}")
+        print(f"y_test[:50]: {y_test[:50]}")
+        print(f"np.unique(y_test.shape): {np.unique(y_test)}")
+
         y_pred = self.evaluate(X_test, y_test)
+
+        print(f"y_pred.shape: {y_pred.shape}")
+        print(f"y_pred[:50]: {y_pred[:50]}")
+        print(f"np.unique(y_pred.shape): {np.unique(y_pred)}")
+
         export_confusion_matrix_to_latex(
             y_test, y_pred, rp.PredictionTask.ORDINAL_CLASSIFICATION)
 
