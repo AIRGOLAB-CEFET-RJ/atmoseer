@@ -120,7 +120,7 @@ def retrieveData():
 
     # Ler o arquivo .nc
     # dataset = Dataset('file.nc', 'r')
-    ds = xr.open_dataset("C:\\Users\\eduar\\Documents\\GitHub\\atmoseerPCS\\backend\\python_scripts\\RJ_2022_2022.nc")
+    ds = xr.open_dataset("C:\\Users\\eduar\\Documents\\GitHub\\atmoseerPCS\\backend\\python_scripts\\RJ_2022_2022.nc") #mudar
     logging.info(f"Size.0: {ds.sizes['time']}")
 
     # Get the minimum and maximum values of the 'time' coordinate

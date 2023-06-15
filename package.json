@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "pickle": "^0.2.0",
+    "torch": "^0.2.7"
+  }
+}
