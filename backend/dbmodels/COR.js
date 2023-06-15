@@ -1,7 +1,7 @@
 const mongoose = require('mongoose')
 const Schema = mongoose.Schema
 
-const wsSchema = new Schema ({
+const corSchema = new Schema ({
     data: { type: Date, required: true },
     nome: { type: String, required: true },
     quantidade_chuva: { type: Number, required: true },
@@ -12,6 +12,6 @@ const wsSchema = new Schema ({
     pressao_atmosferica: { type: Number, required: true }
 })
 
-const WeatherStation = mongoose.model('weatherStation', wsSchema)
+const COR = mongoose.model('COR', corSchema)
 
-module.exports = WeatherStation
+module.exports = COR

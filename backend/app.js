@@ -11,11 +11,13 @@ app.listen(3000, () => {
 });
 
 const soundingRouter = require('./routes/Sounding')
-const wsRouter = require('./routes/WeatherStation')
+const corRouter = require('./routes/COR')
+const inmetRouter = require('./routes/Inmet')
 //const era5Router = require('./routes/Era5')
 
 app.use('/sounding', soundingRouter)
-app.use('/weatherstation', wsRouter)
+app.use('/cor', corRouter)
+app.use('/inmet', inmetRouter)
 //app.use('/era5', era5Router)
 
 mongoose.connect(mongoURI)

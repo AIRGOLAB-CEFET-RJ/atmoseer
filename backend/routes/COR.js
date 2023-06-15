@@ -1,6 +1,6 @@
 var express = require('express')
 var router = express.Router()
-const WeatherStation = require('../dbmodels/weatherStation.js')
+const COR = require('../dbmodels/COR.js')
 
 var weatherData = []
 
@@ -35,7 +35,7 @@ function WeatherData() {
         weatherData.push(stationData);
     })
 
-    WeatherStation.insertMany(weatherData)
+    COR.insertMany(weatherData)
     .then(() => {
         console.log('Dados meteorológicos salvos no MongoDB com sucesso.')
     })

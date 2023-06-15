@@ -39,6 +39,6 @@ const soundingSchema = new Schema ({
     }
 })
 
-const Sounding = mongoose.model('sounding', soundingSchema)
+const Sounding = mongoose.model('Sounding', soundingSchema)
 
 module.exports = Sounding

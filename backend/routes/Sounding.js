@@ -2,7 +2,7 @@ var express = require('express');
 var router = express.Router();
 const cheerio = require('cheerio')
 const http = require('http')
-const Sounding = require('../dbmodels/sounding');
+const Sounding = require('../dbmodels/Sounding');
 
 function SoundingData() {
     let response = ''
