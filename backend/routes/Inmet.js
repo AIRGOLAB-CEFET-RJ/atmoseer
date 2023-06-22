@@ -11,6 +11,8 @@ function InmetData() {
                           'A652',
                           'A627']
     let date = new Date()
+    date.setMinutes("0")
+    date.setSeconds("0")
 
     INMET_STATION_CODES_RJ.forEach(code => {
         let response = ''
@@ -18,7 +20,6 @@ function InmetData() {
                     date.getFullYear() + '-' + (date.getMonth() + 1) + '-' + date.getDate() + '/'+
                     date.getFullYear() + '-' + (date.getMonth() + 1) + '-' + date.getDate() + '/'+
                     code + '/' + token
-        console.log(url)
 
         https.get(url, (res) => {
             res.on('data', (chunk) => {
@@ -31,7 +32,10 @@ function InmetData() {
                 const inmetDataArray = []
 
                 for (let i = 0; i < jsonData.length; i++) {
+                    date.setHours(jsonData[i].HR_MEDICAO.substr(0, 2))
+
                     const newInmetData = new Inmet( {
+                        COD_ESTACAO: code,
                         VEN_DIR: jsonData[i].VEN_DIR,
                         CHUVA: jsonData[i].CHUVA,
                         PRE_INS: jsonData[i].PRE_INS,
@@ -48,7 +52,8 @@ function InmetData() {
                         UMD_INS: jsonData[i].UMD_INS,
                         TEM_MIN: jsonData[i].TEM_MIN,
                         UMD_MIN: jsonData[i].UMD_MIN,
-                        PTO_MAX: jsonData[i].PTO_MAX
+                        PTO_MAX: jsonData[i].PTO_MAX,
+                        TIME: date
                     })
                     
                     inmetDataArray.push(newInmetData)

@@ -2,6 +2,7 @@ const mongoose = require('mongoose')
 const Schema = mongoose.Schema
 
 const inmetSchema = new Schema ({
+    COD_ESTACAO: { type: String },
     VEN_DIR: { type: Number },
     CHUVA: { type: Number },
     PRE_INS: { type: Number },
@@ -18,7 +19,8 @@ const inmetSchema = new Schema ({
     UMD_INS: { type: Number },
     TEM_MIN: { type: Number },
     UMD_MIN: { type: Number },
-    PTO_MAX: { type: Number }
+    PTO_MAX: { type: Number },
+    TIME: { type: Date }
 })
 
 const Inmet = mongoose.model('Inmet', inmetSchema)
