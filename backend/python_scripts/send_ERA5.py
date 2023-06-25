@@ -1,3 +1,12 @@
+#  Programa para enviar o ERA5 para o banco de dados do MongoDB
+
+#   Como a série histórica é gigantesca, pelo menos para outros anos,
+# rodar esse programa apenas uma vez para preencher o banco.
+
+#   ERA5 está sendo reanilizado como modelo númerico de predição, seus 
+# dados estão atrasados 4 dias e são comumente usados para pesquisas de
+# momentos passados
+
 import cdsapi
 from netCDF4 import Dataset
 from pymongo import MongoClient
@@ -160,7 +169,7 @@ def retrieveData():
     logging.info(era5_data_at_700hPa.z.values.shape)
     logging.info(">>><<<")
 
-    df_NWP_ERA5 = pd.DataFrame(
+    df_NWP_ERA5 = pd.DataFrame( #Criação do dataframe com os valores do modelo númerico ERA5
         {
             "time": era5_data_at_1000hPa.time.values,
             
