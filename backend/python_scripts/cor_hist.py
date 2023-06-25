@@ -1,11 +1,11 @@
+#Programa para enviar o histórico do COR para o banco de dados do MongoDB
+#Como a série histórica é gigantesca, rodar esse programa apenas uma vez para preencher o banco 
+
 import pandas as pd
 from pymongo import MongoClient
 
-df = pd.read_parquet('C:\\Users\\eduar\\Downloads\\ws_alertario.parquet.gzip') #Mexer aqui para o caminho do arquivo
-
-#print(df1)
-#ocorrencia = df1['station'].unique()
-#print(ocorrencia)
+#Histórico COR estava contido num arquivo .parquet.gzip. Forma de ler abaixo
+df = pd.read_parquet('Caminho do arquivo .parquet.gzip.')
 
 uri = 'mongodb://127.0.0.1:27017'
 dbName = 'db'

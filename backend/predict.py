@@ -2,11 +2,11 @@ import torch
 import torch.nn as nn
 import pandas as pd
 from pymongo import MongoClient
-
 import sys
 import os
+
 # Obtém o caminho absoluto para o diretório "src"
-src_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
+src_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src'))
 # Adiciona o caminho "src" ao caminho do módulo Python
 sys.path.append(src_path)
 from train.ordinal_classification_net import OrdinalClassificationNet
@@ -16,7 +16,7 @@ pipeline_id = "A652_N"
 client = MongoClient('mongodb://localhost:27017/')
 db = client['db']
 
-# Escolhendo coleção
+# Escolhendo coleção (será baseada no input do usuário)
 #if(sounding):
 #collection = db['soundings']
 #if(era5):
@@ -29,6 +29,7 @@ collection = db['inmets']
 result = collection.find()
 documentosSounding = list(result)
 
+# Criação do dataFrame com dados do servidor
 df = pd.DataFrame(documentosSounding)
 
 client.close()
@@ -78,21 +79,18 @@ print("Model input:")
 print(x)
 
 # Definir as variáveis NUM_FEATURES e NUM_CLASSES
-
 NUM_FEATURES = x.shape[1]
 NUM_CLASSES = 5
 
-#C Cria uma instância do modelo
+# Cria uma instância do modelo
 model = OrdinalClassificationNet(in_channels=NUM_FEATURES, num_classes=NUM_CLASSES)
 
-# Carrega o modelo pré treinado e seus pesos do arquivo
-#diretorio_atual = os.getcwd()
-#pasta_predictModules = os.path.join(diretorio_atual, 'backend', 'predictModules')
+#Chamada dinâmica do caminho do modelo
+caminho_atual = os.path.abspath(os.path.join(os.path.dirname(__file__), '.'))
+model_path = caminho_atual + "\\predictModels" + "\\best_" + pipeline_id + "_OC.pt"
+print(model_path)
 
-#model_path = pasta_predictModules + "\best_" + pipeline_id + "_OC.pt"
-#print(model_path)
-
-model_path = "C:\\Users\\eduar\\Documents\\GitHub\\atmoseerPCS\\backend\\predictModels\\best_A652_N_OC.pt" 
+#model_path = "C:\\Users\\eduar\\Documents\\GitHub\\atmoseerPCS\\backend\\predictModels\\best_A652_N_OC.pt"  #Caminho do modelo
 model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
 
 # Colocar modelo no modo de avaliação (inferência).
