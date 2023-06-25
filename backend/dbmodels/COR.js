@@ -2,14 +2,14 @@ const mongoose = require('mongoose')
 const Schema = mongoose.Schema
 
 const corSchema = new Schema ({
-    data: { type: Date, required: true },
-    nome: { type: String, required: true },
-    quantidade_chuva: { type: Number, required: true },
-    umidade_relativa: { type: Number, required: true },
-    temperatura_media: { type: Number, required: true },
-    direcao_vento: { type: Number, required: true },
-    velocidade_vento: { type: Number, required: true },
-    pressao_atmosferica: { type: Number, required: true }
+    precipitation: { type: Number, required: true },
+    wind_dir: { type: Number, required: true },
+    wind_speed: { type: Number, required: true },
+    temperature: { type: Number, required: true },
+    pressure: { type: Number, required: true },
+    humidity: { type: Number, required: true },
+    station: { type: String, required: true },
+    datetime: { type: Date, required: true }
 })
 
 const COR = mongoose.model('COR', corSchema)
