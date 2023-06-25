@@ -1,6 +1,9 @@
 const mongoose = require('mongoose')
 const Schema = mongoose.Schema
 
+//    SCHEMA DO ERA5... Não utilizado no momento pois esse modelo é enviado manualmente
+// para o banco de dados.
+
 //const normalize = require('normalize-mongoose');
 
 const era5Schema = new Schema ({

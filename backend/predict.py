@@ -11,12 +11,15 @@ src_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src'))
 sys.path.append(src_path)
 from train.ordinal_classification_net import OrdinalClassificationNet
 
+# Definir estação (input do usuário)
+##### A SER IMPLEMENTADO #####
 pipeline_id = "A652_N"
 
 client = MongoClient('mongodb://localhost:27017/')
 db = client['db']
 
-# Escolhendo coleção (será baseada no input do usuário)
+# Escolhendo coleção (baseada em input do usuário)
+##### A SER IMPLEMENTADO #####
 #if(sounding):
 #collection = db['soundings']
 #if(era5):
@@ -58,7 +61,6 @@ if collection == db['sounding']:
     df = df.sort_values(by='time', ascending=False)
 
 # Criação de um dataFrame com as seis linhas mais recentes para predição
-
 df_predict = df.head(6)
 df_predict = df_predict.reset_index(drop=True)
 print(df_predict)
