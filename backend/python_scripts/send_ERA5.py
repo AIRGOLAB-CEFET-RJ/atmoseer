@@ -128,8 +128,9 @@ def retrieveData():
     )
 
     # Ler o arquivo .nc
+    # Escollher o caminho do arquivo
     # dataset = Dataset('file.nc', 'r')
-    ds = xr.open_dataset("C:\\Users\\eduar\\Documents\\GitHub\\atmoseerPCS\\backend\\python_scripts\\RJ_2022_2022.nc") #mudar
+    ds = xr.open_dataset("backend\python_scripts\RJ_2022_2022.nc") 
     logging.info(f"Size.0: {ds.sizes['time']}")
 
     # Get the minimum and maximum values of the 'time' coordinate
@@ -192,7 +193,6 @@ def retrieveData():
             "WindV_1000": era5_data_at_1000hPa.v
         }
     )
-
 
     # Salvar os dados no MongoDB
     saveDataToMongoDB(df_NWP_ERA5.to_dict(orient='records'))

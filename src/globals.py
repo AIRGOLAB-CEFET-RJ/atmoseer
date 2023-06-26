@@ -4,7 +4,7 @@ INMET_API_BASE_URL = "https://apitempo.inmet.gov.br"
 WS_INMET_DATA_DIR = "./data/ws/inmet/"
 
 # Atmospheric sounding datasource directory
-NWP_DATA_DIR = "./data/nwp/"
+NWP_DATA_DIR = "./data/NWP/"
 
 # Atmospheric sounding datasource directory
 AS_DATA_DIR = "./data/as/"

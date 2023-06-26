@@ -1,6 +1,8 @@
-//Importando Express: um framework para Node.js voltado para o desenvolvimento web, servindo como uma camada de abstração para simplificar a criação de aplicativos e APIs web
+//   Importando Express: um framework para Node.js voltado para o desenvolvimento web, servindo como uma camada de abstração 
+// para simplificar a criação de aplicativos e APIs web
 const express = require('express')
-//Importando Mongoose: uma biblioteca do Node.js que trabalha com o MongoDB, um banco de dados do NoSQL, criando uma camada de abstração que facilita na interação com os documentos do banco de dados
+//   Importando Mongoose: uma biblioteca do Node.js que trabalha com o MongoDB, um banco de dados do NoSQL, criando uma 
+// camada de abstração que facilita na interação com os documentos do banco de dados
 const mongoose = require('mongoose')
 
 //Definição da URL de conexão com o MongoDB
