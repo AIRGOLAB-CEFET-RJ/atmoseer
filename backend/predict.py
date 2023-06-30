@@ -100,22 +100,24 @@ colunas_era5 = ['Geopotential_200', 'Humidity_200', 'Temperature_200', 'WindU_20
 df_inmet = df_inmet[colunas_inmet]
 df_era5 = df_era5[colunas_era5]
 
+df_inmet = df_inmet.reset_index()
+df_era5 = df_era5.reset_index()
+
 # Concatenar dataframes
 df_model = pd.concat([df_inmet, df_era5], axis=1)
 
 # Criação de um dataFrame com as seis linhas mais recentes para predição
 df_predict = df_model.head(6)
 df_predict = df_predict.reset_index(drop=True)
-print(df_predict)
 
 # Cada tabela no banco de dados vem com alguns campos indesejáveis, devido a forma que ela 
 # foi inserida provavelmente. Para cada tabela usamos o .iloc[:, 1:-1] para:
 # ler todas aslinhas ':'
 # começar após a primeira coluna '1'
 # terminar na penúltima coluna '-1'
+df_predict = df_predict.iloc[:, 1:8].join(df_predict.iloc[:, 9:])
 
-
-x = df_predict
+x = df_predict.values
 
 print(f"Shape of one test example: {x.shape}")
 print("Model input:")
