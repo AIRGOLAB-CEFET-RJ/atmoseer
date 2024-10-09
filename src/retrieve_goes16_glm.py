@@ -1,98 +1,113 @@
-import pandas as pd
+import s3fs
+import numpy as np
+import os
+import shutil
+from datetime import datetime, timedelta
+from netCDF4 import Dataset
 import sys
 import argparse
-import globals
-import s3fs
-import xarray as xr
-import os
-import tenacity
-from botocore.exceptions import ConnectTimeoutError
-import concurrent.futures
 
-# Use the anonymous credentials to access public data
-fs = s3fs.S3FileSystem(anon=True)
+# Definir limites de coordenadas de interesse
+lon_min, lon_max = -45.05290312102409, -42.35676996062447
+lat_min, lat_max = -23.801876626302175, -21.699774257353113
 
-# Download all files in parallel, and rename them the same name (without the directory structure)
-@tenacity.retry(
-    retry=tenacity.retry_if_exception_type(ConnectTimeoutError),
-    wait=tenacity.wait_exponential(),
-    stop=tenacity.stop_after_attempt(5)
-)
-def download_file(files):
-    """
-    Downloads GOES-16 netCDF files from an S3 bucket, filters them for events that fall within specified coordinates,
-    and saves the filtered data to disk as a Parquet file.
+# Diretório de saída
+output_directory = "data/goes16/glm_files/"
 
-    Args:
-        files (list): A list of strings representing the names of files to be downloaded from an S3 bucket.
-    """
-    
-    def process_file(file):
-        print(f"Reading file: {file}")
-        filename = f"data/goes16/glm_files/{file.split('/')[-1]}"
-        try:
-            fs.get(file, filename)
-        except Exception as e:
-            print(f"Error processing file {file}: {str(e)}")
-
-    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-        executor.map(process_file, files)
+def create_directory(directory):
+    """Cria o diretório se ele não existir."""
+    os.makedirs(directory, exist_ok=True)
+    print(f"Diretório {directory} criado (ou já existia).")
 
 
-def import_data(initial_year, final_year):
-    """
-    Downloads and saves GOES-16 (Geostationary Operational Environmental Satellite) data files from the Amazon S3 bucket for a specified time period.
+def clear_directory(directory):
+    """Limpa o diretório de saída e cria novamente."""
+    if os.path.exists(directory):
+        shutil.rmtree(directory)
+        print(f"Diretório {directory} limpo.")
+    create_directory(directory)
 
-    This function targets the 'noaa-goes16' S3 bucket, specifically accessing the GLM-L2-LCFA (Geostationary Lightning Mapper - Level 2 Lightning Detection) dataset. 
-    It downloads data for every day between the initial and final years specified, covering all hours of each day.
+def download_files(start_date, end_date):
+    """Baixa os arquivos GLM para um intervalo de datas especificado e faz o crop por coordenadas."""
+    current_date = start_date
+    fs = s3fs.S3FileSystem(anon=True)
 
-    The data is organized in a multiband format and follows the structure: <Product>/<Year>/<Day of Year>/<Hour>/<Filename>.
+    while current_date <= end_date:
+        year = current_date.year
+        day_of_year = current_date.timetuple().tm_yday 
+        bucket_path = f'noaa-goes16/GLM-L2-LCFA/{year}/{day_of_year:03d}/'
 
-    Args:
-        initial_year (int): The initial year of the time period for which data is to be downloaded. The data for this year starts from January 1st.
-        final_year (int): The final year of the time period for which data is to be downloaded. The data for this year includes up to December 31st.
+        print(f"Buscando arquivos para {current_date.strftime('%Y-%m-%d')} (dia {day_of_year})")
+        
+        # Diretório de saída específico para o dia atual
+        day_output_directory = os.path.join(output_directory, current_date.strftime('%Y-%m-%d'))
+        clear_directory(day_output_directory)
 
-    Returns:
-        None. The function saves the downloaded files to a specified location (not defined in this docstring).
+        # Iterar pelas subpastas de cada hora (00 a 23)
+        files = []
+        for hour in range(24):
+            hour_path = bucket_path + f"{hour:02d}/"  
+            try:
+                hourly_files = fs.ls(hour_path)
+                files.extend(hourly_files)  
+            except FileNotFoundError:
+                print(f"Hora {hour:02d} não encontrada no bucket. Pulando...")
 
-    Note: 
-    - This function requires a pre-established connection to Amazon S3 and appropriate permissions to access the 'noaa-goes16' bucket.
-    - It assumes the GOES-16 data is in the correct format and available for the entire range from the initial_year to the final_year.
-    - Ensure sufficient storage space and network bandwidth as the dataset might be large, especially for longer time periods.
-    - The function handles data for 24 hours each day, using a 0-23 hour format.
-    """
-    # Get files of GOES-16 data (multiband format) on multiple dates
-    # format: <Product>/<Year>/<Day of Year>/<Hour>/<Filename>
-    hours = [f'{h:02d}' for h in range(25)]  # Download all 24 hours of data
+        print(f"Total de arquivos encontrados para {current_date.strftime('%Y-%m-%d')}: {len(files)}")
 
-    start_date = pd.to_datetime(f'{initial_year}-01-01')
-    end_date = pd.to_datetime(f'{final_year}-12-31')
-    dates = pd.date_range(start=start_date, end=end_date, freq='D')
+        for file in files:
+            file_name = file.split('/')[-1]
+            local_file_path = os.path.join(day_output_directory, file_name)
+            print(f"Baixando: {file} para {local_file_path}")
+            fs.get(file, local_file_path)
+            filter_by_coordinates(local_file_path)
 
-    files = []
-    for date in dates:
-        year = str(date.year)
-        day_of_year = f'{date.dayofyear:03d}'
-        print(f'noaa-goes16/GLM-L2-LCFA/{year}/{day_of_year}')
-        for hour in hours:
-            target = f'noaa-goes16/GLM-L2-LCFA/{year}/{day_of_year}/{hour}'
-            files.extend(fs.ls(target))
+        print(f"Download e filtro para {current_date.strftime('%Y-%m-%d')} concluídos.")
+        current_date += timedelta(days=1)
 
-    download_file(files)
+def filter_by_coordinates(file_path):
+    """Filtra os eventos GLM de um arquivo NetCDF com base nas coordenadas fornecidas."""
+    dataset = None
+    try:
+        dataset = Dataset(file_path, 'r')
+
+        longitudes = dataset.variables['flash_lon'][:]
+        latitudes = dataset.variables['flash_lat'][:]
+
+        print(f"Longitude mínima: {longitudes.min()}, máxima: {longitudes.max()}")
+        print(f"Latitude mínima: {latitudes.min()}, máxima: {latitudes.max()}")
+
+        mask = (
+            (longitudes >= lon_min) & (longitudes <= lon_max) &
+            (latitudes >= lat_min) & (latitudes <= lat_max)
+        )
+
+        if np.sum(mask) == 0:
+            print(f"Nenhum evento dentro do filtro encontrado em {file_path}. Removendo arquivo.")
+            dataset.close()
+            os.remove(file_path)
+        else:
+            print(f"Eventos dentro do filtro encontrados no arquivo {file_path}.")
+        
+    except Exception as e:
+        print(f"Erro ao filtrar o arquivo {file_path}: {e}")
+
 
 def main(argv):
-    parser = argparse.ArgumentParser(description='Downlaod GLM files')
-    parser.add_argument('-b', '--start', required=True, help='Start year to get data')
-    parser.add_argument('-e', '--end', required=True, help='End year to get data')
+    parser = argparse.ArgumentParser(description='Download e filtro de arquivos GLM por coordenadas.')
+    parser.add_argument('-b', '--start_date', required=True, help='Data de início no formato YYYY-MM-DD')
+    parser.add_argument('-e', '--end_date', required=True, help='Data de término no formato YYYY-MM-DD')
     args = parser.parse_args(argv[1:])
 
-    start_year = args.start
-    end_year = args.end
+    # Converter as strings de data para objetos datetime
+    start_date = datetime.strptime(args.start_date, '%Y-%m-%d')
+    end_date = datetime.strptime(args.end_date, '%Y-%m-%d')
 
-    assert (start_year <= end_year)
+    # Verificar se a data de início é menor ou igual à data de término
+    assert start_date <= end_date, "A data de início deve ser anterior ou igual à data de término."
 
-    import_data(start_year, end_year)
-
+    # Iniciar o processo de download e filtro
+    download_files(start_date, end_date)
 
 if __name__ == "__main__":
     main(sys.argv)
